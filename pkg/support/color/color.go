@@ -1,0 +1,163 @@
+package color
+
+import (
+	"bytes"
+	"github.com/pterm/pterm"
+	"io"
+)
+
+// The color package provides a set of functions to colorize the output of the terminal using PTerm library.
+const (
+	FgBlack Color = iota + 30
+	FgRed
+	FgGreen
+	FgYellow
+	FgBlue
+	FgMagenta
+	FgCyan
+	FgWhite
+	// FgDefault revert default FG.
+	FgDefault Color = 39
+)
+
+// Extra foreground color 90 - 97.
+const (
+	FgDarkGray Color = iota + 90
+	FgLightRed
+	FgLightGreen
+	FgLightYellow
+	FgLightBlue
+	FgLightMagenta
+	FgLightCyan
+	FgLightWhite
+	// FgGray is an alias of FgDarkGray.
+	FgGray Color = 90
+)
+
+var (
+	info    = pterm.Info
+	warn    = pterm.Warning
+	err     = pterm.Error
+	debug   = pterm.Debug
+	success = pterm.Success
+)
+
+// New Functions to create Printer with specific color
+func New(color Color) Printer {
+	return color
+}
+
+func Green() Printer {
+	return New(FgGreen)
+}
+
+func Red() Printer {
+	return New(FgRed)
+}
+
+func Blue() Printer {
+	return New(FgBlue)
+}
+
+func Yellow() Printer {
+	return New(FgYellow)
+}
+
+func Cyan() Printer {
+	return New(FgCyan)
+}
+
+func White() Printer {
+	return New(FgWhite)
+}
+
+func Gray() Printer {
+	return New(FgGray)
+}
+
+func Default() Printer {
+	return New(FgDefault)
+}
+
+func Black() Printer {
+	return New(FgBlack)
+}
+
+func Magenta() Printer {
+	return New(FgMagenta)
+}
+
+type Color uint8
+
+func (c Color) Sprint(a ...interface{}) string {
+	return pterm.Color(c).Sprint(a...)
+}
+
+func (c Color) Sprintln(a ...interface{}) string {
+	return pterm.Color(c).Sprintln(a...)
+}
+
+func (c Color) Sprintf(format string, a ...interface{}) string {
+	return pterm.Color(c).Sprintf(format, a...)
+}
+
+func (c Color) Sprintfln(format string, a ...interface{}) string {
+	return pterm.Color(c).Sprintfln(format, a...)
+}
+
+func (c Color) Print(a ...any) *Printer {
+	pterm.Color(c).Print(a...)
+	p := Printer(c)
+	return &p
+}
+
+func (c Color) Println(a ...any) *Printer {
+	pterm.Color(c).Println(a...)
+	p := Printer(c)
+	return &p
+}
+
+func (c Color) Printf(format string, a ...any) *Printer {
+	pterm.Color(c).Printf(format, a...)
+	p := Printer(c)
+	return &p
+}
+
+func (c Color) Printfln(format string, a ...any) *Printer {
+	pterm.Color(c).Printfln(format, a...)
+	p := Printer(c)
+	return &p
+}
+
+// Quick use color print message
+
+func Debugf(format string, a ...any) { debug.Printf(format, a...) }
+
+func Debugln(a ...any) { debug.Println(a...) }
+
+func Errorf(format string, a ...any) { err.Printf(format, a...) }
+
+func Errorln(a ...any) { err.Println(a...) }
+
+func Infof(format string, a ...any) { info.Printf(format, a...) }
+
+func Infoln(a ...any) { info.Println(a...) }
+
+func Successf(format string, a ...any) { success.Printf(format, a...) }
+
+func Successln(a ...any) { success.Println(a...) }
+
+func Warnf(format string, a ...any) { warn.Printf(format, a...) }
+
+func Warnln(a ...any) { warn.Println(a...) }
+
+// CaptureOutput simulates capturing of os.stdout with a buffer and returns what was written to the screen
+func CaptureOutput(f func(w io.Writer)) string {
+	var outBuf bytes.Buffer
+	pterm.SetDefaultOutput(&outBuf)
+	f(&outBuf)
+
+	content := outBuf.String()
+	outBuf.Reset()
+	return content
+}

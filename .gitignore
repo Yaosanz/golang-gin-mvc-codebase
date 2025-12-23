@@ -1,0 +1,42 @@
+# Binaries
+/bin/
+/obj/
+/*.exe
+/*.exe~
+/*.out
+/*.test
+
+
+# Vendor directory
+/vendor/
+
+# Environment variables
+.env
+*.env
+
+# IDE and editor files
+*.idea/
+*.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+*.log
+
+# Coverage files
+*.cov
+*.out
+
+# Temporary files
+*.tmp
+*.temp
+
+# Temporary directory
+tmp
+
+# rsa key
+config/keycloack/rsa-key/*.key
+.gcloud-service.json
+.gcloud-credentials.json
+gcloud-credentials.json
