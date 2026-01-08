@@ -1,0 +1,8 @@
+- [x] Update import path for AuthContext in Login.tsx to '../../../src/context/AuthContext'
+- [x] Update import path for AuthContext in Dashboard.tsx to '../../../src/context/AuthContext'
+- [x] Remove unused LinkIcon from imports in Dashboard.tsx
+- [x] Add useCallback to React imports in Dashboard.tsx
+- [x] Wrap fetchLinks in useCallback with [token] dependency in Dashboard.tsx
+- [x] Move fetchLinks definition before useEffect in Dashboard.tsx
+- [x] Update useEffect to include fetchLinks in dependency array in Dashboard.tsx
+- [x] Replace pageSize and rowsPerPageOptions props in DataGrid with initialState pagination model and pageSizeOptions prop in Dashboard.tsx
