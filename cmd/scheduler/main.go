@@ -25,18 +25,18 @@ func main() {
 	}
 
 	// initialize database connection
-	db, dbErr := database.NewPostgres(cfg)
+	_, dbErr := database.NewPostgres(cfg)
 	if dbErr != nil {
 		log.Fatalf("Failed to initialize database: \n%v", dbErr)
 	}
 
-	appBootstrap, err := bootstrap.NewAppBootstrap(cfg, db)
+	appBootstrap, err := bootstrap.NewAppBootstrap()
 	if err != nil {
 		log.Fatalf("Failed to initialize app: \n%v", err)
 	}
 
 	// Create a context for graceful shutdown
-	ctx, cancel := context.WithCancel(context.Background())
+	_, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	// Channel to capture OS signals
@@ -51,7 +51,7 @@ func main() {
 	}
 
 	// Start the scheduler in a separate goroutine
-	go appBootstrap.GetScheduler().Start(ctx)
+	go appBootstrap.GetScheduler().Start()
 
 	// Wait for shutdown signal
 	<-quit

@@ -8,17 +8,21 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func Register(router *gin.Engine, app interfaces.KernelDependencies, middleware *middleware.Middleware) {
-	// api routes group (use /api prefix and api middleware)
-	apiGroup := router.Group("/api", middleware.GetGroupMiddleware("api")...)
+func Register(
+	router *gin.Engine,
+	app interfaces.KernelDependencies,
+	mw *middleware.Middleware,
+) {
+	api := router.Group("/api", mw.GetGroupMiddleware("api")...)
 	{
-		// v1 routes group
-		v1RouteGroup := apiGroup.Group("/v1")
-		v1Route.UserRoute(v1RouteGroup, app, middleware)
+		v1 := api.Group("/v1")
+
+		v1Route.AuthRoute(v1, app.(interfaces.IAppDependencies), mw)
+		v1Route.UserRoute(v1, app, mw)
+		v1Route.ShortenlinkRoute(v1, app, mw)
 	}
 
-	// web routes group (use web middleware)
-	web := router.Group("/", middleware.GetGroupMiddleware("web")...)
+	web := router.Group("/", mw.GetGroupMiddleware("web")...)
 	{
 		web.GET("/", func(c *gin.Context) {
 			c.JSON(200, gin.H{"message": "welcome to web"})

@@ -1,50 +1,52 @@
 package middleware
 
-import "github.com/gin-gonic/gin"
+import (
+	"go-starter-app/interfaces"
+
+	"github.com/gin-gonic/gin"
+)
 
 type Middleware struct {
-	globalMiddleware []gin.HandlerFunc
-	groupsMiddleware map[string][]gin.HandlerFunc
+	globalMiddleware map[string][]gin.HandlerFunc
+	groupMiddleware  map[string][]gin.HandlerFunc
 	routeMiddleware  map[string]gin.HandlerFunc
 }
 
 func NewMiddleware() *Middleware {
 	return &Middleware{
-		globalMiddleware: []gin.HandlerFunc{},
-		groupsMiddleware: map[string][]gin.HandlerFunc{},
-		routeMiddleware:  map[string]gin.HandlerFunc{},
+		globalMiddleware: make(map[string][]gin.HandlerFunc),
+		groupMiddleware:  make(map[string][]gin.HandlerFunc),
+		routeMiddleware:  make(map[string]gin.HandlerFunc),
 	}
 }
 
-// Register all middleware here
-func (m *Middleware) Register() {
+// Register ALL middleware here
+func (m *Middleware) Register(app interfaces.IAppDependencies) {
 	// Global middleware
-	m.globalMiddleware = []gin.HandlerFunc{
+	m.globalMiddleware["global"] = []gin.HandlerFunc{
 		gin.Logger(),
 		gin.Recovery(),
 		CorsMiddleware(),
-		// Add more global middleware here
 	}
 
-	// Predefine common groups
-	m.groupsMiddleware["api"] = []gin.HandlerFunc{
-		// Add your API group middleware here
-	}
-	m.groupsMiddleware["web"] = []gin.HandlerFunc{
-		// Add your Web group middleware here
-	}
+	// Group middleware 
+	m.groupMiddleware["api"] = []gin.HandlerFunc{}
+	m.groupMiddleware["web"] = []gin.HandlerFunc{}
 
-	// Define route middleware
-	m.routeMiddleware["auth"] = AuthMiddleware()
-	m.routeMiddleware["throttle"] = ThrottleMiddleware()
+	// Route middleware
+	m.routeMiddleware["jwt"] = JWTAuthMiddleware(app)
 }
 
+
+
+// ===== GETTERS =====
+
 func (m *Middleware) GetGlobalMiddleware() []gin.HandlerFunc {
-	return m.globalMiddleware
+	return m.globalMiddleware["global"]
 }
 
 func (m *Middleware) GetGroupMiddleware(name string) []gin.HandlerFunc {
-	return m.groupsMiddleware[name]
+	return m.groupMiddleware[name]
 }
 
 func (m *Middleware) GetRouteMiddleware(name string) gin.HandlerFunc {

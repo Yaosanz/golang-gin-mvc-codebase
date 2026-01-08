@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+
 	"go-starter-app/app/repositories"
 	"go-starter-app/app/validation"
 	"go-starter-app/config"
@@ -25,14 +26,33 @@ type IServiceDependencies interface {
 	GetOca() *oca.Client
 }
 
+// 🔥 SERVICE CONTAINER
 type ServiceContainer struct {
-	UserService *UserService
-	// Add other services here
+	UserService        *UserService
+	AuthService        *AuthService
+	ShortenlinkService IShortenlinkService
+	PermissionService  *PermissionService
 }
 
 func NewServiceContainer(deps IServiceDependencies) *ServiceContainer {
+	cfg := deps.GetConfig().Jwt()
+
 	return &ServiceContainer{
 		UserService: NewUserService(deps),
-		// Initialize other services here
+
+		AuthService: NewAuthService(
+			deps,
+			deps.GetRepo().UserRepo,
+			cfg.Secret,
+			cfg.Issuer,
+			cfg.ExpiredIn,
+		),
+
+		// 🔥 FIX UTAMA
+		ShortenlinkService: NewShortenlinkService(
+			deps.GetRepo().ShortenlinkRepo,
+		),
+
+		PermissionService: NewPermissionService(deps),
 	}
 }

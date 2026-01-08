@@ -13,6 +13,8 @@
 # Environment variables
 .env
 *.env
+credentials/*.json
+
 
 # IDE and editor files
 *.idea/
@@ -34,6 +36,9 @@
 
 # Temporary directory
 tmp
+app.exe
+seeder.exe
+TODO.md
 
 # rsa key
 config/keycloack/rsa-key/*.key

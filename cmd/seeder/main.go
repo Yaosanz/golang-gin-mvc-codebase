@@ -46,6 +46,7 @@ var allCmd = &cobra.Command{
 	Short: "Run all seeders",
 	Run: func(cmd *cobra.Command, args []string) {
 		initDB()
+		seeder.SetOrder([]string{"permission_seeder", "role_seeder", "role_permissions_seeder", "user_seeder"})
 		s := seeder.NewSeeder(db)
 		if err := s.RunAll(); err != nil {
 			seeder.LogFatalf("Seeder failed: %v", err)

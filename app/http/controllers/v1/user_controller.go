@@ -7,7 +7,6 @@ import (
 	"go-starter-app/helpers"
 	"go-starter-app/interfaces"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -65,11 +64,11 @@ func (c *UserController) FindAll(ctx *gin.Context) {
 // @Tags User
 // @Accept json
 // @Produce json
-// @Param id path int true "User ID"
+// @Param id path string true "User ID"
 // @Success 200 {object} swagger.ResponseOk{data=swagger.UserResponse}
 // @Router /api/v1/users/{id} [get]
 func (c *UserController) FindByID(ctx *gin.Context) {
-	id, _ := utils.GetIDParam(ctx, "id")
+	id, _ := utils.GetSlugParam(ctx, "id")
 	data, err := c.app.GetService().UserService.FindById(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -120,23 +119,12 @@ func (c *UserController) Create(ctx *gin.Context) {
 // @Tags User
 // @Accept json
 // @Produce json
-// @Param id path int true "User ID"
+// @Param id path string true "User ID"
 // @Param payload body dto.UpdateUserDTO true "Update user"
 // @Success 200 {object} swagger.ResponseOk{data=swagger.UserResponse}
 // @Router /api/v1/users/{id} [patch]
 func (c *UserController) Update(ctx *gin.Context) {
-	idParam := ctx.Param("id")
-	if idParam == "" {
-		utils.SendError(ctx, http.StatusInternalServerError, "Invalid ID", nil)
-		return
-	}
-
-	// convert id to int64
-	id, err := strconv.ParseInt(idParam, 10, 64)
-	if err != nil {
-		utils.SendError(ctx, http.StatusBadRequest, "Invalid ID format", err)
-		return
-	}
+	id, _ := utils.GetSlugParam(ctx, "id")
 
 	var req dto.UpdateUserDTO
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -151,7 +139,7 @@ func (c *UserController) Update(ctx *gin.Context) {
 		return
 	}
 
-	err = c.app.GetService().UserService.Update(ctx, id, &req)
+	err := c.app.GetService().UserService.Update(ctx, id, &req)
 	if err != nil {
 		utils.SendError(ctx, http.StatusInternalServerError, err.Error(), err)
 		return
@@ -165,25 +153,14 @@ func (c *UserController) Update(ctx *gin.Context) {
 // @Tags User
 // @Accept json
 // @Produce json
-// @Param id path int true "User ID"
+// @Param id path string true "User ID"
 // @Success 200 {object} swagger.ResponseOk
 // @Failure 500 {object} swagger.ResponseError
 // @Router /api/v1/users/{id} [delete]
 func (c *UserController) Delete(ctx *gin.Context) {
-	idParam := ctx.Param("id")
-	if idParam == "" {
-		utils.SendError(ctx, http.StatusInternalServerError, "Invalid ID", nil)
-		return
-	}
+	id, _ := utils.GetSlugParam(ctx, "id")
 
-	// convert id to int64
-	id, err := strconv.ParseInt(idParam, 10, 64)
-	if err != nil {
-		utils.SendError(ctx, http.StatusInternalServerError, "Invalid ID format", err)
-		return
-	}
-
-	err = c.app.GetService().UserService.Delete(ctx, id)
+	err := c.app.GetService().UserService.Delete(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			utils.SendError(ctx, http.StatusNotFound, "User not found", nil)

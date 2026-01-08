@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+
 	"go-starter-app/app/http/utils"
 	"go-starter-app/app/models"
 )
@@ -18,13 +19,15 @@ type UserRepo struct {
 
 type IUserRepo interface {
 	FindAll(ctx context.Context, params utils.QueryParams) ([]models.User, int64, error)
-	FindById(ctx context.Context, id int64) (*models.User, error)
+	FindById(ctx context.Context, id string) (*models.User, error)
+	FindByUsername(ctx context.Context, username string) (*models.User, error)
+	FindByEmail(ctx context.Context, email string) (*models.User, error)
 	Create(ctx context.Context, user *models.User) error
 	Update(ctx context.Context, user *models.User) error
-	UpdateById(ctx context.Context, id int64, updates map[string]interface{}) error
-	Delete(ctx context.Context, id int64) error
-	MarkAsActive(ctx context.Context, id int64) (bool, error)
-	MarkAsInActive(ctx context.Context, id int64) (bool, error)
+	UpdateById(ctx context.Context, id string, updates map[string]interface{}) error
+	Delete(ctx context.Context, id string) error
+	MarkAsActive(ctx context.Context, id string) (bool, error)
+	MarkAsInActive(ctx context.Context, id string) (bool, error)
 }
 
 // NewUserRepo creates a new instance of UserRepo
@@ -34,7 +37,6 @@ func NewUserRepo(deps IRepoDependencies) IUserRepo {
 	}
 }
 
-// FindAll retrieves users with filtering, sorting, and pagination
 func (r *UserRepo) FindAll(ctx context.Context, params utils.QueryParams) ([]models.User, int64, error) {
 	var users []models.User
 	var total int64
@@ -44,18 +46,13 @@ func (r *UserRepo) FindAll(ctx context.Context, params utils.QueryParams) ([]mod
 	query = query.Scopes(utils.ApplyFilter(params.Filters, allowedUserFilter))
 	query = query.Scopes(utils.ApplyDateFilter(params.DateFrom, params.DateTo, params.DateField))
 
-	// fetch total count for pagination
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	// apply sorting if enabled
 	query = query.Scopes(utils.ApplySorting(params))
-
-	// apply pagination if enabled
 	query = query.Scopes(utils.ApplyPagination(params))
 
-	// execute query to fetch users
 	if err := query.Find(&users).Error; err != nil {
 		return nil, 0, err
 	}
@@ -63,38 +60,57 @@ func (r *UserRepo) FindAll(ctx context.Context, params utils.QueryParams) ([]mod
 	return users, total, nil
 }
 
-// FindById retrieves a user by ID
-func (r *UserRepo) FindById(ctx context.Context, id int64) (*models.User, error) {
+func (r *UserRepo) FindById(ctx context.Context, id string) (*models.User, error) {
 	var user models.User
 	err := r.app.GetDBWithContext(ctx).First(&user, "id = ?", id).Error
 	return &user, err
 }
 
-// Create adds a new user
+func (r *UserRepo) FindByUsername(ctx context.Context, username string) (*models.User, error) {
+	var user models.User
+	err := r.app.GetDBWithContext(ctx).
+		Where("username = ?", username).
+		First(&user).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
+}
+
 func (r *UserRepo) Create(ctx context.Context, user *models.User) error {
 	return r.app.GetDBWithContext(ctx).Create(user).Error
 }
 
-// Update user
 func (r *UserRepo) Update(ctx context.Context, user *models.User) error {
 	return r.app.GetDBWithContext(ctx).Save(user).Error
 }
 
-// UpdateById updates specific fields of a user by its ID
-func (r *UserRepo) UpdateById(ctx context.Context, id int64, updates map[string]interface{}) error {
-	return r.app.GetDBWithContext(ctx).Model(&models.User{}).
+func (r *UserRepo) UpdateById(ctx context.Context, id string, updates map[string]interface{}) error {
+	return r.app.GetDBWithContext(ctx).
+		Model(&models.User{}).
 		Where("id = ?", id).
 		Updates(updates).Error
 }
 
-// Delete removes a user by ID
-func (r *UserRepo) Delete(ctx context.Context, id int64) error {
-	return r.app.GetDBWithContext(ctx).Where("id = ?", id).Delete(&models.User{}).Error
+func (r *UserRepo) FindByEmail(ctx context.Context, email string) (*models.User, error) {
+	var user models.User
+	err := r.app.GetDBWithContext(ctx).
+		Where("email = ?", email).
+		First(&user).Error
+	return &user, err
 }
 
-// MarkAsActive marks a user as read
-func (r *UserRepo) MarkAsActive(ctx context.Context, id int64) (bool, error) {
-	err := r.app.GetDBWithContext(ctx).Model(&models.User{}).
+func (r *UserRepo) Delete(ctx context.Context, id string) error {
+	return r.app.GetDBWithContext(ctx).
+		Where("id = ?", id).
+		Delete(&models.User{}).Error
+}
+
+func (r *UserRepo) MarkAsActive(ctx context.Context, id string) (bool, error) {
+	err := r.app.GetDBWithContext(ctx).
+		Model(&models.User{}).
 		Where("id = ?", id).
 		Update("is_active", true).Error
 
@@ -105,9 +121,9 @@ func (r *UserRepo) MarkAsActive(ctx context.Context, id int64) (bool, error) {
 	return true, nil
 }
 
-// MarkAsInActive marks a user as read
-func (r *UserRepo) MarkAsInActive(ctx context.Context, id int64) (bool, error) {
-	err := r.app.GetDBWithContext(ctx).Model(&models.User{}).
+func (r *UserRepo) MarkAsInActive(ctx context.Context, id string) (bool, error) {
+	err := r.app.GetDBWithContext(ctx).
+		Model(&models.User{}).
 		Where("id = ?", id).
 		Update("is_active", false).Error
 

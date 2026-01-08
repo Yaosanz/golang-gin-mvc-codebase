@@ -13,7 +13,7 @@ import (
 	"go-starter-app/pkg/scheduler"
 	"go-starter-app/pkg/storage"
 	"log"
-
+	"os"
 	"github.com/minio/minio-go/v7"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
@@ -60,14 +60,23 @@ func NewAppBootstrap() (*App, error) {
 	}
 	a.minio = minioClient
 
-	// initialize fcm client
-	fcm, err := google.NewFCM("/app/fcm-credentials.json")
-	if err != nil {
-		log.Printf("Initialization failed: %v", err)
+	// initialize fcm client (optional)
+	fcmCredentialPath := os.Getenv("FCM_CREDENTIAL_PATH")
+
+	if fcmCredentialPath == "" {
+		log.Println("[FCM] skipped: FCM_CREDENTIAL_PATH not set")
 	} else {
-		log.Print("Initialized successfully")
-		a.fcm = fcm
+		credPath := fcmCredentialPath
+		fcm, err := google.NewFCM(credPath)
+
+		if err != nil {
+			log.Printf("[FCM] initialization failed: %v", err)
+		} else {
+			log.Println("[FCM] initialized successfully")
+			a.fcm = fcm
+		}
 	}
+
 
 	a.validator = validation.NewAppValidator(db) // initialize validator with db connection
 

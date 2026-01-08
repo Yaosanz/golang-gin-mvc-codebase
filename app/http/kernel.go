@@ -36,7 +36,7 @@ func NewKernel(ctx context.Context, app interfaces.KernelDependencies) *Kernel {
 
 	// setup middleware
 	k.middleware = middleware.NewMiddleware()
-	k.middleware.Register()
+	k.middleware.Register(k.app.(interfaces.IAppDependencies))
 	k.router.Use(k.middleware.GetGlobalMiddleware()...)
 
 	k.registerRoutes()                // register routes

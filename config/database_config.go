@@ -1,8 +1,9 @@
 package config
 
 import (
-	"github.com/spf13/viper"
 	"log"
+
+	"github.com/spf13/viper"
 )
 
 type DatabaseConfig struct {
@@ -21,20 +22,22 @@ type DatabaseConfig struct {
 
 // load database config and set default value and marshalling value from file to struct
 func (m *DatabaseConfig) load(v *viper.Viper) {
+	// ✅ PostgreSQL defaults
 	v.SetDefault("DB_HOST", "localhost")
-	v.SetDefault("DB_PORT", "3306")
-	v.SetDefault("DB_USERNAME", "root")
-	v.SetDefault("DB_PASSWORD", "root")
+	v.SetDefault("DB_PORT", "5432")
+	v.SetDefault("DB_USERNAME", "postgres")
+	v.SetDefault("DB_PASSWORD", "")
 	v.SetDefault("DB_NAME", "postgres")
 	v.SetDefault("DB_DEBUG", false)
 	v.SetDefault("DB_TIMEZONE", "UTC")
 	v.SetDefault("DB_SSL_MODE", "disable")
+
+	// Pooling
 	v.SetDefault("DB_MAX_OPEN_CONNECTION", "10")
 	v.SetDefault("DB_MAX_CONNECTION_LIFETIME", "5m")
 	v.SetDefault("DB_MAX_IDLE_LIFETIME", "5m")
 
-	err := v.Unmarshal(&m)
-	if err != nil {
-		log.Fatalf("unable to unmarshal DatabaseConfig: %v", err.Error())
+	if err := v.Unmarshal(m); err != nil {
+		log.Fatalf("unable to unmarshal DatabaseConfig: %v", err)
 	}
 }

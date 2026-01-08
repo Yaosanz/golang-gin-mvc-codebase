@@ -14,10 +14,10 @@ type UserService struct {
 
 type IUserService interface {
 	FindAll(ctx context.Context, params utils.QueryParams) ([]models.User, int64, error)
-	FindById(ctx context.Context, id int64) (*models.User, error)
+	FindById(ctx context.Context, id string) (*models.User, error)
 	Create(ctx context.Context, dto *dto.CreateUserDTO) error
 	Update(ctx context.Context, dto *dto.UpdateUserDTO) error
-	Delete(ctx context.Context, id int64) error
+	Delete(ctx context.Context, id string) error
 }
 
 func NewUserService(deps IServiceDependencies) *UserService {
@@ -32,7 +32,7 @@ func (s *UserService) FindAll(ctx context.Context, params utils.QueryParams) ([]
 }
 
 // FindById retrieves a user by ID
-func (s *UserService) FindById(ctx context.Context, id int64) (*models.User, error) {
+func (s *UserService) FindById(ctx context.Context, id string) (*models.User, error) {
 	return s.app.GetRepo().UserRepo.FindById(ctx, id)
 }
 
@@ -56,7 +56,7 @@ func (s *UserService) Create(ctx context.Context, dto *dto.CreateUserDTO) error 
 }
 
 // Update modifies an existing user
-func (s *UserService) Update(ctx context.Context, id int64, dto *dto.UpdateUserDTO) error {
+func (s *UserService) Update(ctx context.Context, id string, dto *dto.UpdateUserDTO) error {
 	user, err := s.app.GetRepo().UserRepo.FindById(ctx, id)
 	if err != nil {
 		return err
@@ -90,6 +90,6 @@ func (s *UserService) Update(ctx context.Context, id int64, dto *dto.UpdateUserD
 }
 
 // Delete removes a user by ID
-func (s *UserService) Delete(ctx context.Context, id int64) error {
+func (s *UserService) Delete(ctx context.Context, id string) error {
 	return s.app.GetRepo().UserRepo.Delete(ctx, id)
 }

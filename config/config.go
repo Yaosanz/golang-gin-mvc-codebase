@@ -30,6 +30,7 @@ type Config struct {
 	kafka   KafkaConfig
 	redis   RedisConfig
 	oca     OcaConfig
+	jwt     JwtConfig
 }
 
 func NewConfig() (*Config, error) {
@@ -68,6 +69,7 @@ func NewConfig() (*Config, error) {
 	cfg.kafka.load(v)
 	cfg.redis.load(v)
 	cfg.oca.load(v)
+	cfg.jwt.load(v)
 
 	// Validate all configurations
 	if err := cfg.validate(); err != nil {
@@ -86,6 +88,11 @@ func (c *Config) validate() error {
 		return err
 	}
 	return nil
+}
+
+// Jwt Getter method
+func (c *Config) Jwt() JwtConfig {
+	return c.jwt
 }
 
 // App Getter method

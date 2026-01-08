@@ -1,81 +1,61 @@
 package helpers
 
 import (
-	"encoding/base64"
-	"encoding/json"
-	"errors"
-	"strings"
+	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
-// OidcClaims represents the claims extracted from a JWT token
-type OidcClaims struct {
-	Exp            int      `json:"exp"`
-	Iat            int      `json:"iat"`
-	AuthTime       int      `json:"auth_time"`
-	Jti            string   `json:"jti"`
-	Iss            string   `json:"iss"`
-	Sub            string   `json:"sub"`
-	Typ            string   `json:"typ"`
-	Azp            string   `json:"azp"`
-	Nonce          string   `json:"nonce"`
-	SessionState   string   `json:"session_state"`
-	Acr            string   `json:"acr"`
-	AllowedOrigins []string `json:"allowed-origins"`
-	ResourceAccess struct {
-		Access struct {
-			Roles []string `json:"roles"`
-		} `json:"access"`
-	} `json:"resource_access"`
-	Scope             string `json:"scope"`
-	Sid               string `json:"sid"`
-	EmailVerified     bool   `json:"email_verified"`
-	ShadowExpire      string `json:"shadowExpire"`
-	Name              string `json:"name"`
-	KodeIdentitas     string `json:"kodeIdentitas"`
-	PreferredUsername string `json:"preferred_username"`
-	Civitas           string `json:"civitas"`
-	GivenName         string `json:"given_name"`
-	FamilyName        string `json:"family_name"`
-	Email             string `json:"email"`
+// JwtClaims adalah custom claims untuk JWT
+type JwtClaims struct {
+	UserID   string    `json:"user_id"`
+	Username string    `json:"username"`
+	Role     string    `json:"role"`
+	RoleID   uuid.UUID `json:"role_id"`
+	jwt.RegisteredClaims
 }
 
-// JWTDecode decodes a JWT token's payload and maps it to the given struct
-func JWTDecode(tokenString string) (*OidcClaims, error) {
-	// Split the token into its parts (header, payload, signature)
-	parts := strings.Split(tokenString, ".")
-	if len(parts) != 3 {
-		return nil, errors.New("invalid JWT token format")
+// GenerateToken membuat JWT token dengan UUID user
+func GenerateToken(
+	userID uuid.UUID,
+	username string,
+	role string,
+	roleID uuid.UUID,
+	secret string,
+	expired time.Duration,
+	issuer string,
+) (string, error) {
+
+	claims := JwtClaims{
+		UserID:   userID.String(),
+		Username: username,
+		Role:     role,
+		RoleID:   roleID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    issuer,
+			IssuedAt: jwt.NewNumericDate(time.Now()),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(expired)),
+		},
 	}
 
-	// Decode the payload (second part of the JWT)
-	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
-	if err != nil {
-		return nil, errors.New("failed to decode JWT payload")
-	}
-
-	// Unmarshal the payload into the struct
-	var claims OidcClaims
-	err = json.Unmarshal(payload, &claims)
-	if err != nil {
-		return nil, errors.New("failed to map JWT payload to struct")
-	}
-	return &claims, nil
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(secret))
 }
 
-// JWTMapClaims map jwt claim
-func JWTMapClaims(ctx *gin.Context) (map[string]interface{}, error) {
-	claims, exists := ctx.Get("claims")
-	if !exists {
-		return nil, errors.New("claims not found in context")
+// ValidateJWT memvalidasi dan parse JWT token
+func ValidateJWT(tokenString string, secret string) (*JwtClaims, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &JwtClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return []byte(secret), nil
+	})
+
+	if err != nil {
+		return nil, err
 	}
 
-	// Assert the type
-	claimsMap, ok := claims.(map[string]interface{})
-	if !ok {
-		return nil, errors.New("invalid claims format")
+	if claims, ok := token.Claims.(*JwtClaims); ok && token.Valid {
+		return claims, nil
 	}
 
-	return claimsMap, nil
+	return nil, jwt.ErrSignatureInvalid
 }

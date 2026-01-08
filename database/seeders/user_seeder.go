@@ -1,69 +1,105 @@
 package seeders
 
 import (
+	"log"
+
 	"go-starter-app/app/models"
 	"go-starter-app/helpers"
 	"go-starter-app/pkg/database/seeder"
-	"log"
 
 	"github.com/pkg/errors"
 	"gorm.io/gorm"
 )
 
+const defaultPassword = "secret123"
+
 func init() {
-	seeder.Register("user_seeder", user)
+	seeder.Register("user_seeder", userSeeder)
 }
 
-func user(db *gorm.DB) error {
-	// Define the seed data
+func userSeeder(db *gorm.DB) error {
 	active := true
-	hashedPassword, err := helpers.HashPassword("password", 12)
+
+	hashedPassword, err := helpers.HashPassword(defaultPassword, 12)
 	if err != nil {
 		return err
 	}
 
-	data := []models.User{
+	// Get role IDs
+	var adminRole, userRole models.Role
+	if err := db.Where("name = ?", "admin").First(&adminRole).Error; err != nil {
+		return err
+	}
+	if err := db.Where("name = ?", "user").First(&userRole).Error; err != nil {
+		return err
+	}
+
+	users := []models.User{
 		{
-			Name:     "Dewi Sartika",
-			Username: "dewisartika",
-			Email:    "dewisartika@gmail.com",
+			Name:     "Super Admin",
+			Username: "admin",
+			Email:    "admin@mydigilearn.com",
 			Phone:    nil,
-			Password: hashedPassword, // use the hashed password
-			IsActive: &active,
+			Password: hashedPassword,
+			IsActive: active,
+			Role:     models.RoleAdmin,
+			RoleID:   adminRole.ID,
 		},
 		{
-			Name:     "Agus Sutanto",
-			Username: "agussutanto",
-			Email:    "agussutanto@gmail.com",
+			Name:     "Sandy Budi Wirawan",
+			Username: "sandy",
+			Email:    "sandy@gmail.com",
 			Phone:    nil,
-			Password: hashedPassword, // use the hashed password
-			IsActive: &active,
+			Password: hashedPassword,
+			IsActive: active,
+			Role:     models.RoleUser,
+			RoleID:   userRole.ID,
 		},
 	}
 
-	for _, item := range data {
+	for _, item := range users {
 		var existing models.User
-		err := db.Where("email = ?", item.Email).First(&existing).Error
+
+		err := db.
+			Where("email = ?", item.Email).
+			First(&existing).
+			Error
+
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				// Not found, proceed to create
-				err = db.Create(&item).Error
-				if err != nil {
-					log.Printf("[SEEDER]: Failed to seed user %v: %v", item.Name, err)
-					continue // continue to next item
+				if err := db.Create(&item).Error; err != nil {
+					log.Printf(
+						"[SEEDER][USER]: Failed to seed %s (%s): %v",
+						item.Name,
+						item.Email,
+						err,
+					)
+					continue
 				}
 
-				log.Printf("[SEEDER]: Successfully seeded user %v", item.Name)
-				continue // continue to next item
+				log.Printf(
+					"[SEEDER][USER]: Seeded %s (%s) role=%s | password=%s",
+					item.Name,
+					item.Email,
+					item.Role,
+					defaultPassword,
+				)
+				continue
 			}
 
-			// Unexpected error
-			log.Printf("[SEEDER]: Failed to check existing user %v: %v", item.Name, err)
-			continue // continue to next item
+			log.Printf(
+				"[SEEDER][USER]: Error checking user %s: %v",
+				item.Email,
+				err,
+			)
+			continue
 		}
 
-		// Already exists, skip
-		log.Printf("[SEEDER]: user %v already exists (ID %d), skipping", existing.Name, existing.ID)
+		log.Printf(
+			"[SEEDER][USER]: User %s already exists (role=%s), skipping",
+			existing.Email,
+			existing.Role,
+		)
 	}
 
 	return nil
