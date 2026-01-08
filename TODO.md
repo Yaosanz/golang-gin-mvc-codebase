@@ -19,7 +19,7 @@
 
 ## Remaining
 
-- [ ] Update auth_service Register: Set RoleID for new users
-- [ ] Run migrations up
-- [ ] Run seeders (role_seeder first, then others)
-- [ ] Test authentication and permission checks
+- [x] Update auth_service Register: Set RoleID for new users
+- [x] Run migrations up
+- [x] Run seeders (role_seeder first, then others)
+- [x] Test authentication and permission checks
