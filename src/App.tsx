@@ -10,7 +10,7 @@ import { AuthProvider, useAuth } from './context/AuthContext.tsx';
 const theme = createTheme();
 
 function App() {
-  return (  
+  return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <AuthProvider>
@@ -18,14 +18,7 @@ function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
+            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/" element={<Navigate to="/dashboard" />} />
           </Routes>
         </Router>
