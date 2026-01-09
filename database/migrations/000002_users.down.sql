@@ -5,8 +5,6 @@ START TRANSACTION;
 -- =====================================================
 DROP INDEX IF EXISTS uq_users_username;
 DROP INDEX IF EXISTS uq_users_email;
-
-DROP TYPE IF EXISTS user_role;
 DROP INDEX IF EXISTS idx_users_role;
 DROP INDEX IF EXISTS idx_users_deleted_at;
 
