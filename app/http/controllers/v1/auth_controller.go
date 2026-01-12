@@ -43,6 +43,7 @@ func (ctl *AuthController) Login(c *gin.Context) {
 		"token_type":   "Bearer",
 	}, "Login success")
 }
+
 // POST /api/v1/auth/register
 func (ctl *AuthController) Register(c *gin.Context) {
 	var req dto.RegisterDTO
