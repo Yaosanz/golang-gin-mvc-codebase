@@ -27,7 +27,13 @@ export interface UserResponse {
 
 export const getAll = async (params?: { page?: number; limit?: number; search?: string }): Promise<{ data: UserResponse[]; total: number; page: number; limit: number }> => {
   const response = await api.get('/users', { params });
-  return response.data;
+  const resData = response.data.data;
+  return {
+    data: resData.contents || [],
+    total: resData.pagination?.total_data || 0,
+    page: resData.pagination?.current_page || 1,
+    limit: resData.pagination?.per_page || 10,
+  };
 };
 
 export const create = async (data: CreateUserRequest): Promise<UserResponse> => {

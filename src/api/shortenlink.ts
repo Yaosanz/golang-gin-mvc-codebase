@@ -9,15 +9,15 @@ export interface UpdateShortenLinkRequest {
 }
 
 export interface ShortenLinkResponse {
-  id: string;
-  short_code: string;
-  original_url: string;
-  created_at: string;
+  ID: string;
+  ShortCode: string;
+  OriginalURL: string;
+  CreatedAt: string;
 }
 
-export const getAll = async (params?: { page?: number; limit?: number; search?: string }): Promise<{ data: ShortenLinkResponse[]; total: number; page: number; limit: number }> => {
-  const response = await api.get('/shorten-links', { params });
-  return response.data;
+export const getAll = async (): Promise<ShortenLinkResponse[]> => {
+  const response = await api.get('/shorten-links');
+  return response.data.data || [];
 };
 
 export const create = async (data: CreateShortenLinkRequest): Promise<ShortenLinkResponse> => {

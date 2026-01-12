@@ -5,7 +5,7 @@ import { create } from '../api/shortenlink.ts';
 const ShortenLinkCreate: React.FC = () => {
   const [url, setUrl] = useState('');
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
-  const [createdLink, setCreatedLink] = useState<{ short_code: string; original_url: string } | null>(null);
+  const [createdLink, setCreatedLink] = useState<{ ShortCode: string; OriginalURL: string } | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,9 +35,12 @@ const ShortenLinkCreate: React.FC = () => {
         <Card sx={{ mt: 3 }}>
           <CardContent>
             <Typography variant="h6">Created Link</Typography>
-            <Typography>Original: {createdLink.original_url}</Typography>
+            <Typography>Original: {createdLink.OriginalURL}</Typography>
             <Typography>
-              Short: {window.location.origin}/r/{createdLink.short_code}
+              Short:{' '}
+              <a href={`${window.location.origin}/r/${createdLink.ShortCode}`} target="_blank" rel="noopener noreferrer">
+                {window.location.origin}/r/{createdLink.ShortCode}
+              </a>
             </Typography>
           </CardContent>
         </Card>
