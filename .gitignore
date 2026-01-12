@@ -60,6 +60,7 @@ out/
 docker-compose.override.yml
 
 # Temporary directory
+TODO.md
 tmp/
 temp/
 .cache/
