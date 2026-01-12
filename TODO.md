@@ -1,31 +1,83 @@
-# TODO for CMS Dashboard and Register Updates
+# TODO: Integrate Backend API with React + Material UI Frontend
 
-## UI Template Implementation
+## Overview
 
-- [x] Update Login component to use MUI Sign-In template for attractive display.
-- [x] Update Register component to use MUI Sign-Up template with grid layout and validation.
-- [x] Update Dashboard component to use MUI Dashboard template with AppBar, collapsible Drawer, and grid layout.
+This TODO list guides the implementation of a React frontend using Material UI to consume the Go Gin backend APIs. Ensure all API calls are made correctly with proper authentication, error handling, and data validation. Base URL: `http://localhost:8080/api/v1` (adjust as needed).
 
-## Error Handling Improvements
+## Prerequisites
 
-- [x] Add specific error messages for login (401: Invalid credentials).
-- [x] Add specific error messages for register (409: User exists, generic for others).
-- [x] Add detailed error handling in dashboard for API failures (401: Unauthorized with logout, others: generic).
+- [x] Set up React project: `npx create-react-app frontend`
+- [x] Install dependencies: `npm install @mui/material @emotion/react @emotion/styled axios react-router-dom`
+- [x] Set up Material UI theme provider in `App.js`
+- [x] Configure React Router for navigation
 
-## CTA and Routing
+## API Configuration
 
-- [x] Ensure all buttons have complete CTAs with accurate routing (login to register, register back to login, logout to login).
-- [x] Confirm workflow: register success -> login, login success -> dashboard.
+- [x] Create `src/api/config.ts` with base URL and axios instance
+- [x] Add request interceptor to include JWT token in headers for protected routes
+- [x] Add response interceptor to handle 401 (token expired) by redirecting to login
 
-## Notification Improvements
+## Authentication
 
-- [x] Add clear success notifications for login and register using MUI Snackbar.
-- [x] Use detailed messages like "Login successful! Redirecting to dashboard..." and "Registration successful! Redirecting to login...".
-- [x] Implement auto-redirect after success notifications.
+- [x] Create `src/api/auth.ts` with functions:
+  - `login(username, password)`: POST /auth/login, store token in localStorage
+  - `register(data)`: POST /auth/register
+  - `logout()`: Clear token from localStorage
+- [x] Create Login component (`src/components/Auth/Login.tsx`) with form validation
+- [x] Create Register component (`src/components/Auth/Register.tsx`)
+- [x] Implement token persistence: Check token on app load, redirect if invalid
 
-## Testing and Verification
+## Shorten Link CRUD
 
-- [x] Run the application and verify all templates render correctly.
-- [x] Verify error messages are specific and user-friendly.
-- [x] Verify all CTAs and routing work as expected.
-- [x] Verify Snackbar notifications appear for success and error cases.
+- [x] Create `src/api/shortenlink.ts` with functions (include Authorization header):
+  - `getAll()`: GET /shorten-links
+  - `create(data)`: POST /shorten-links, data: {original_url}
+  - `getById(id)`: GET /shorten-links/:id
+  - `update(id, data)`: PATCH /shorten-links/:id, data: {original_url}
+  - `delete(id)`: DELETE /shorten-links/:id
+  - `redirect(code)`: GET /r/:code (public, no auth)
+- [x] Create ShortenLinkList component with Material UI List and actions
+- [x] Create ShortenLinkCreate component for create with validation
+- [x] Add edit dialog in ShortenLinkList
+- [x] Handle API errors: Show Snackbar with error messages
+
+## User Management (Admin Only)
+
+- [x] Create `src/api/user.ts` with functions (include Authorization header):
+  - `getAll()`: GET /users (requires user:read permission)
+  - `create(data)`: POST /users, data: {name, username, email, phone?, is_active?, password}
+  - `getById(id)`: GET /users/:id
+  - `update(id, data)`: PATCH /users/:id, data: partial update
+  - `delete(id)`: DELETE /users/:id
+- [x] Create UserList component with Material UI Table (not implemented yet)
+- [x] Create UserForm component for create/edit (not implemented yet)
+- [x] Add role-based UI: Show user management only if user has admin role (from JWT claims)
+
+## UI/UX Enhancements
+
+- [x] Add loading states for all API calls (Snackbar for messages)
+- [x] Implement error handling: Display errors in Snackbar or Alert components
+- [x] Add success messages for create/update/delete operations
+- [x] Implement pagination for list views if backend supports it
+- [x] Add search/filter functionality for lists
+
+## Testing
+
+- [ ] Test login/register: Ensure token is stored and used in subsequent requests
+- [ ] Test protected routes: Verify 401 handling when token is missing/expired
+- [ ] Test CRUD operations: Create, read, update, delete for shortenlinks and users
+- [ ] Test error scenarios: Invalid data, network errors, permission denied
+- [ ] Test public redirect: Ensure /r/:code works without auth
+
+## Deployment
+
+- [ ] Build React app: `npm run build`
+- [ ] Serve static files or integrate with backend
+- [ ] Ensure CORS is configured in backend for frontend origin
+
+## Notes
+
+- All protected routes require `Authorization: Bearer <token>` header
+- User permissions are checked server-side; frontend should hide UI based on user role
+- Handle JWT expiration: Refresh token or re-login
+- Validate form data client-side before API calls

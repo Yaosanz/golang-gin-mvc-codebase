@@ -3,7 +3,7 @@ import { Avatar, Button, CssBaseline, TextField, FormControlLabel, Checkbox, Lin
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { login as apiLogin } from '../api/auth.ts';
 import { useAuth } from '../context/AuthContext.tsx';
 
 const defaultTheme = createTheme();
@@ -24,12 +24,9 @@ export default function Login() {
     e.preventDefault();
 
     try {
-      const res = await axios.post('/api/v1/auth/login', {
-        username,
-        password,
-      });
+      const res = await apiLogin({ username, password });
 
-      login(res.data.data.token);
+      login(res.data.access_token);
 
       setSnackbar({
         open: true,

@@ -13,7 +13,7 @@ import Typography from '@mui/material/Typography';
 import Container from '@mui/material/Container';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { register as apiRegister } from '../api/auth.ts';
 import { Snackbar, Alert } from '@mui/material';
 
 function Copyright(props: any) {
@@ -60,7 +60,7 @@ export default function SignUp() {
     }
     setErrors({});
     try {
-      await axios.post('/api/v1/auth/register', { username, name, email, password });
+      await apiRegister({ username, name, email, password });
       setSnackbar({ open: true, message: 'Registration successful! Redirecting to login...', severity: 'success' });
       setTimeout(() => navigate('/login'), 2000);
     } catch (err: any) {
