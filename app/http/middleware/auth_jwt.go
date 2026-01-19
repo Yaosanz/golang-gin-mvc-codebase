@@ -33,6 +33,7 @@ func JWTAuthMiddleware(app interfaces.IAppDependencies) gin.HandlerFunc {
 
 		tokenString := parts[1]
 
+		// ✅ PAKAI JWT YANG SUDAH ADA DI PROJECT
 		secret := app.GetConfig().Jwt().Secret
 		claims, err := helpers.ValidateJWT(tokenString, secret)
 		if err != nil {
@@ -42,7 +43,8 @@ func JWTAuthMiddleware(app interfaces.IAppDependencies) gin.HandlerFunc {
 			})
 			return
 		}
-	
+
+		// ✅ SET CONTEXT
 		c.Set("user_id", claims.UserID)
 		c.Set("role_id", claims.RoleID)
 		c.Set("app", app)

@@ -30,18 +30,68 @@ credentials/*.json
 *.cov
 *.out
 
-# Temporary files
-*.tmp
-*.temp
-
-# Temporary directory
-tmp
-app.exe
-seeder.exe
-TODO.md
 
 # rsa key
 config/keycloack/rsa-key/*.key
 .gcloud-service.json
 .gcloud-credentials.json
 gcloud-credentials.json
+
+# Logs
+logs/
+*.log
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build output frontend
+.next/
+.nuxt/
+dist/
+build/
+out/
+
+# Docker files
+docker-compose.override.yml
+
+# Temporary directory
+TODO.md
+tmp/
+temp/
+.cache/
+tmp
+app.exe
+seeder.exe
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Binary / executable
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Build output
+/bin/
+/build/
+/dist/
+
+# Go workspace
+go.work
+go.work.sum
+
+# Go test & coverage
+*.test
+*.out
+coverage.*
+coverage/
+
