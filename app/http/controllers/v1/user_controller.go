@@ -38,7 +38,6 @@ func NewUserController(app interfaces.KernelDependencies) *UserController {
 func (c *UserController) FindAll(ctx *gin.Context) {
 	params := utils.ParseQueryParams(ctx, nil)
 	params.Sanitize()
-	// params.Filters["id"] = "2" // example injecting filter by id
 
 	data, total, err := c.app.GetService().UserService.FindAll(ctx, params)
 	if err != nil {

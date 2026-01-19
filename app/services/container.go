@@ -26,7 +26,7 @@ type IServiceDependencies interface {
 	GetOca() *oca.Client
 }
 
-// 🔥 SERVICE CONTAINER
+// SERVICE CONTAINER
 type ServiceContainer struct {
 	UserService        *UserService
 	AuthService        *AuthService
@@ -48,7 +48,6 @@ func NewServiceContainer(deps IServiceDependencies) *ServiceContainer {
 			cfg.ExpiredIn,
 		),
 
-		// 🔥 FIX UTAMA
 		ShortenlinkService: NewShortenlinkService(
 			deps.GetRepo().ShortenlinkRepo,
 		),

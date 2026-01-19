@@ -44,13 +44,13 @@ func (s *ShortenlinkService) Create(
 	userID string,
 ) (*models.ShortenLink, error) {
 
-	// 🔒 Parse & validasi UUID dari JWT (user yang login)
+	// Parse & validasi UUID dari JWT (user yang login)
 	uid, err := uuid.Parse(userID)
 	if err != nil {
 		return nil, errors.New("invalid user id")
 	}
 
-	// 🔑 Generate UUID baru untuk shortlink
+	// Generate UUID baru untuk shortlink
 	shortlinkID := uuid.New()
 
 	now := time.Now()

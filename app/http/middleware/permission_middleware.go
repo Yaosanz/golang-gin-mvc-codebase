@@ -12,7 +12,6 @@ import (
 func RequirePermission(code string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
-		// ❌ JANGAN MustGet
 		appAny, exists := c.Get("app")
 		if !exists {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{

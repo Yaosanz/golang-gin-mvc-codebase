@@ -30,7 +30,7 @@ func UserRoute(
 		users.GET(
 			"/:id",
 			middleware.RequirePermission("user:read"),
-			controller.FindByID, // ⬅️ WAJIB ADA
+			controller.FindByID, 
 		)
 
 		users.POST(
