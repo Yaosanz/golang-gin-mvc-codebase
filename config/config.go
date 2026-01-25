@@ -20,17 +20,18 @@ func (e *ConfigurationError) Error() string {
 }
 
 type Config struct {
-	app     AppConfig
-	server  ServerConfig
-	db      DatabaseConfig
-	smtp    SmtpConfig
-	minio   MinioConfig
-	oidc    OidcConfig
-	swagger SwaggerConfig
-	kafka   KafkaConfig
-	redis   RedisConfig
-	oca     OcaConfig
-	jwt     JwtConfig
+	app            AppConfig
+	server         ServerConfig
+	db             DatabaseConfig
+	smtp           SmtpConfig
+	minio          MinioConfig
+	oidc           OidcConfig
+	swagger        SwaggerConfig
+	kafka          KafkaConfig
+	redis          RedisConfig
+	oca            OcaConfig
+	jwt            JwtConfig
+	MigrationPath  string
 }
 
 func NewConfig() (*Config, error) {
@@ -70,6 +71,13 @@ func NewConfig() (*Config, error) {
 	cfg.redis.load(v)
 	cfg.oca.load(v)
 	cfg.jwt.load(v)
+	
+	// Set migration path
+	if migrationPath := os.Getenv("MIGRATION_PATH"); migrationPath != "" {
+		cfg.MigrationPath = migrationPath
+	} else {
+		cfg.MigrationPath = "database/migrations"
+	}
 
 	// Validate all configurations
 	if err := cfg.validate(); err != nil {

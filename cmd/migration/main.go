@@ -106,8 +106,9 @@ func runMigrations(command string, version int) {
 	}
 
 	// Initialize migration instance
+	migrationPath := "file://" + cfg.MigrationPath
 	m, err := migrate.NewWithDatabaseInstance(
-		"file://../../database/migrations",
+		migrationPath,
 		"postgres",
 		driver,
 	)

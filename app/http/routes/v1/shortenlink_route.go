@@ -39,6 +39,14 @@ func ShortenlinkRoute(
 		api.DELETE("/:id", secureAuth.PermissionRequired("shortenlink:delete:own"), controller.Delete)   // Delete own (users) or any (admin/cms)
 	}
 
+	// Compatibility routes for Postman collection (no dash, code-based operations)
+	compat := router.Group("/shortenlinks")
+	{
+		compat.GET("/:code", controller.GetByCode)
+		compat.POST("", secureAuth.AuthRequired(), controller.CreateByCode)
+		compat.PUT("/:code", secureAuth.AuthRequired(), controller.UpdateByCode)
+	}
+
 	// PUBLIC REDIRECT
 	router.GET("/r/:code", controller.Redirect)
 

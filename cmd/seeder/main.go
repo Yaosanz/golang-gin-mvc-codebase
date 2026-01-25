@@ -74,6 +74,7 @@ var allTxCmd = &cobra.Command{
 	Short: "Run all seeders inside a single transaction",
 	Run: func(cmd *cobra.Command, args []string) {
 		initDB()
+		seeder.SetOrder([]string{"permission_seeder", "role_seeder", "role_permissions_seeder", "user_seeder"})
 		s := seeder.NewSeeder(db)
 		if err := s.RunAllWithTransaction(); err != nil {
 			seeder.LogFatalf("Seeder failed (transaction rolled back): %v", err)

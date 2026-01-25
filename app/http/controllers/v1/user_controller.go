@@ -2,13 +2,15 @@ package v1
 
 import (
 	"errors"
+	"net/http"
+
 	"go-starter-app/app/http/dto"
 	"go-starter-app/app/http/utils"
 	"go-starter-app/helpers"
 	"go-starter-app/interfaces"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -93,14 +95,14 @@ func (c *UserController) FindByID(ctx *gin.Context) {
 func (c *UserController) Create(ctx *gin.Context) {
 	var req dto.CreateUserDTO
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.SendError(ctx, http.StatusNotFound, "Invalid request data", err)
+		utils.SendError(ctx, http.StatusBadRequest, "Invalid request data", err)
 		return
 	}
 
 	// validate request
 	validationErrors := c.app.GetValidator().ValidateStruct(&req)
 	if validationErrors != nil {
-		utils.SendError(ctx, http.StatusNotFound, "Validation error", validationErrors)
+		utils.SendError(ctx, http.StatusBadRequest, "Validation error", validationErrors)
 		return
 	}
 
@@ -110,7 +112,8 @@ func (c *UserController) Create(ctx *gin.Context) {
 		return
 	}
 
-	utils.SendOne(ctx, nil, http.StatusText(http.StatusCreated), nil)
+	status := http.StatusCreated
+	utils.SendOne(ctx, nil, "User created successfully", &status)
 }
 
 // Update godoc
@@ -127,24 +130,66 @@ func (c *UserController) Update(ctx *gin.Context) {
 
 	var req dto.UpdateUserDTO
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.SendError(ctx, http.StatusInternalServerError, "Invalid request data", err)
+		utils.SendError(ctx, http.StatusBadRequest, "Invalid request data", err)
 		return
 	}
 
 	// validate request
 	validationErrors := c.app.GetValidator().ValidateStruct(&req)
 	if validationErrors != nil {
-		utils.SendError(ctx, http.StatusInternalServerError, "Validation error", validationErrors)
+		utils.SendError(ctx, http.StatusBadRequest, "Validation error", validationErrors)
 		return
 	}
 
 	err := c.app.GetService().GetUserService().Update(ctx, id, &req)
 	if err != nil {
-		utils.SendError(ctx, http.StatusInternalServerError, err.Error(), err)
+		status := http.StatusInternalServerError
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			status = http.StatusNotFound
+		}
+		utils.SendError(ctx, status, err.Error(), err.Error())
 		return
 	}
 
-	utils.SendOne(ctx, nil, http.StatusText(http.StatusCreated), nil)
+	utils.SendOne(ctx, gin.H{"id": id}, "Update success", nil)
+}
+
+// UpdateSelf updates the authenticated user's profile when no ID is provided in the path.
+func (c *UserController) UpdateSelf(ctx *gin.Context) {
+	userIDVal, exists := ctx.Get("user_id")
+	if !exists {
+		utils.SendError(ctx, http.StatusUnauthorized, "User not authenticated", nil)
+		return
+	}
+
+	userID, ok := userIDVal.(uuid.UUID)
+	if !ok {
+		utils.SendError(ctx, http.StatusInternalServerError, "Invalid user context", nil)
+		return
+	}
+
+	var req dto.UpdateUserDTO
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.SendError(ctx, http.StatusBadRequest, "Invalid request data", err)
+		return
+	}
+
+	validationErrors := c.app.GetValidator().ValidateStruct(&req)
+	if validationErrors != nil {
+		utils.SendError(ctx, http.StatusBadRequest, "Validation error", validationErrors)
+		return
+	}
+
+	if err := c.app.GetService().GetUserService().Update(ctx, userID.String(), &req); err != nil {
+		status := http.StatusInternalServerError
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			status = http.StatusNotFound
+		}
+		utils.SendError(ctx, status, err.Error(), err.Error())
+		return
+	}
+
+	utils.SendOne(ctx, gin.H{"id": userID.String()}, "Update success", nil)
 }
 
 // Delete godoc

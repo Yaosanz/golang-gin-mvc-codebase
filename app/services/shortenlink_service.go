@@ -17,10 +17,12 @@ import (
 )
 
 type IShortenlinkService interface {
-	Create(ctx context.Context, originalURL, userID string) (*models.ShortenLink, error)
+	Create(ctx context.Context, originalURL, customCode, userID string) (*models.ShortenLink, error)
 	FindAll(ctx context.Context, userID string) ([]*models.ShortenLink, error)
 	FindById(ctx context.Context, id, userID string) (*models.ShortenLink, error)
+	FindByCode(ctx context.Context, code string) (*models.ShortenLink, error)
 	Update(ctx context.Context, id, originalURL, userID string) (*models.ShortenLink, error)
+	UpdateByCode(ctx context.Context, code, originalURL, userID string) (*models.ShortenLink, error)
 	Delete(ctx context.Context, id, userID string) error
 	GetByCode(ctx context.Context, code string) (*models.ShortenLink, error)
 	Redirect(ctx context.Context, code string) (string, error)
@@ -65,6 +67,7 @@ func NewShortenlinkService(
 func (s *ShortenlinkService) Create(
 	ctx context.Context,
 	originalURL string,
+	customCode string,
 	userID string,
 ) (*models.ShortenLink, error) {
 
@@ -79,12 +82,22 @@ func (s *ShortenlinkService) Create(
 
 	now := time.Now()
 
+	// Use provided custom code if any, otherwise generate
+	code := customCode
+	if code == "" {
+		code = generateShortCode()
+	} else {
+		if existing, err := s.repo.FindByCode(ctx, code); err == nil && existing != nil && existing.ID != uuid.Nil {
+			return nil, errors.New("short code already exists")
+		}
+	}
+
 	data := &models.ShortenLink{
-		ID:          shortlinkID,       // UUID unik shortlink
-		OriginalURL: originalURL,       // URL asli
-		ShortCode:   generateShortCode(), // Kode pendek acak
-		UserID:      uid,               // Pemilik shortlink (dari JWT)
-		CreatedBy:   uid,               // User yang membuat
+		ID:          shortlinkID, // UUID unik shortlink
+		OriginalURL: originalURL, // URL asli
+		ShortCode:   code,        // Kode pendek
+		UserID:      uid,         // Pemilik shortlink (dari JWT)
+		CreatedBy:   uid,         // User yang membuat
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
@@ -223,6 +236,25 @@ func (s *ShortenlinkService) FindById(
 }
 
 // ==========================
+// FIND BY CODE
+// ==========================
+func (s *ShortenlinkService) FindByCode(
+	ctx context.Context,
+	code string,
+) (*models.ShortenLink, error) {
+
+	data, err := s.repo.FindByCode(ctx, code)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("shortlink not found")
+		}
+		return nil, err
+	}
+
+	return data, nil
+}
+
+// ==========================
 // UPDATE SHORT LINK
 // ==========================
 func (s *ShortenlinkService) Update(
@@ -270,6 +302,46 @@ func (s *ShortenlinkService) Update(
 	)
 	s.cache.Delete(ctx, "all_shortenlinks")
 
+	return updatedLink, nil
+}
+
+// ==========================
+// UPDATE BY CODE
+// ==========================
+func (s *ShortenlinkService) UpdateByCode(
+	ctx context.Context,
+	code string,
+	originalURL string,
+	userID string,
+) (*models.ShortenLink, error) {
+
+	if _, err := uuid.Parse(userID); err != nil {
+		return nil, errors.New("invalid user id")
+	}
+
+	updatedLink, err := helpers.RunInTransactionWithResult(ctx, s.deps.GetDB(), func(ctx context.Context, tx *gorm.DB) (*models.ShortenLink, error) {
+		data, err := s.repo.FindByCode(ctx, code)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, errors.New("shortlink not found")
+			}
+			return nil, fmt.Errorf("error finding shortlink: %w", err)
+		}
+
+		data.OriginalURL = originalURL
+		data.UpdatedAt = time.Now()
+
+		if err := s.repo.Update(ctx, data); err != nil {
+			return nil, fmt.Errorf("error updating shortlink: %w", err)
+		}
+
+		return data, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	_ = s.InvalidateShortenLinkCache(ctx, updatedLink.ShortCode)
 	return updatedLink, nil
 }
 

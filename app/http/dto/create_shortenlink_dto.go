@@ -6,12 +6,13 @@ import "time"
 // CREATE SHORTENLINK DTO
 // ==========================
 type CreateShortenLinkDTO struct {
-	OriginalURL string `json:"original_url" binding:"required,url"`
+	OriginalURL string `json:"url" binding:"required,url"`
+	CustomCode  string `json:"custom_code" binding:"omitempty,alphanum"`
 }
 
 
 type UpdateShortenLinkDTO struct {
-	OriginalURL string `json:"original_url" binding:"required,url"`
+	OriginalURL string `json:"url" binding:"required,url"`
 }
 
 // ==========================

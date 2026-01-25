@@ -17,10 +17,15 @@ func Register(
 	api := router.Group("/api", mw.GetGroupMiddleware("api")...)
 	{
 		v1 := api.Group("/v1")
-
 		v1Route.AuthRoute(v1, app.(interfaces.IAppDependencies), mw)
 		v1Route.UserRoute(v1, app, mw)
 		v1Route.ShortenlinkRoute(v1, app, mw)
+
+		// Compatibility routes without version prefix to match Postman collection
+		v0 := api.Group("")
+		v1Route.AuthRoute(v0, app.(interfaces.IAppDependencies), mw)
+		v1Route.UserRoute(v0, app, mw)
+		v1Route.ShortenlinkRoute(v0, app, mw)
 	}
 
 	web := router.Group("/", mw.GetGroupMiddleware("web")...)
