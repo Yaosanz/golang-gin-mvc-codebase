@@ -40,4 +40,20 @@ func Register(
 			controller.Redirect(c)
 		})
 	}
+
+	// Handle common browser requests to avoid 404 spam
+	router.GET("/favicon.ico", func(c *gin.Context) {
+		c.Status(204) // No Content
+	})
+
+	// Ignore hot-reload files (webpack dev server)
+	router.NoRoute(func(c *gin.Context) {
+		path := c.Request.URL.Path
+		// Silently ignore webpack hot-update files
+		if len(path) > 15 && path[len(path)-15:] == "hot-update.json" {
+			c.Status(204)
+			return
+		}
+		c.JSON(404, gin.H{"error": "route not found"})
+	})
 }
