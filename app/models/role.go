@@ -13,6 +13,10 @@ type Role struct {
 	UpdatedAt time.Time      `gorm:"autoUpdateTime"`
 	DeletedAt gorm.DeletedAt `gorm:"index"`
 	Name      string         `gorm:"uniqueIndex;not null"`
+
+	// Relationships
+	RolePermissions []RolePermission `gorm:"foreignKey:RoleID" json:"role_permissions,omitempty"`
+	Permissions     []Permission     `gorm:"many2many:role_permissions;" json:"permissions,omitempty"`
 }
 
 func (r *Role) BeforeCreate(tx *gorm.DB) (err error) {

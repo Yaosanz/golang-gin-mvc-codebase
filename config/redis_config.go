@@ -8,6 +8,7 @@ import (
 )
 
 type RedisConfig struct {
+	Enabled  bool   `mapstructure:"REDIS_ENABLED"`
 	Host     string `mapstructure:"REDIS_HOST"`
 	Port     string `mapstructure:"REDIS_PORT"`
 	Password string `mapstructure:"REDIS_PASSWORD"`
@@ -16,6 +17,7 @@ type RedisConfig struct {
 
 // load database config and set default value and marshalling value from file to struct
 func (m *RedisConfig) load(v *viper.Viper) {
+	v.SetDefault("REDIS_ENABLED", true)
 	v.SetDefault("REDIS_HOST", "127.0.0.1")
 	v.SetDefault("REDIS_PORT", "6379")
 	v.SetDefault("REDIS_PASSWORD", "")
@@ -29,5 +31,5 @@ func (m *RedisConfig) load(v *viper.Viper) {
 
 // Addr returns the address of the Redis server in "host:port" format.
 func (c *RedisConfig) Addr() string {
-	return fmt.Sprintf("%s:%d", c.Host, c.Port)
+	return fmt.Sprintf("%s:%s", c.Host, c.Port)
 }

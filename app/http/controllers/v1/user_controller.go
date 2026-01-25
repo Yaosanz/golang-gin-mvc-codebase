@@ -39,7 +39,7 @@ func (c *UserController) FindAll(ctx *gin.Context) {
 	params := utils.ParseQueryParams(ctx, nil)
 	params.Sanitize()
 
-	data, total, err := c.app.GetService().UserService.FindAll(ctx, params)
+	data, total, err := c.app.GetService().GetUserService().FindAll(ctx, params)
 	if err != nil {
 		utils.SendError(ctx, http.StatusNotFound, err.Error(), err)
 		return
@@ -68,7 +68,7 @@ func (c *UserController) FindAll(ctx *gin.Context) {
 // @Router /api/v1/users/{id} [get]
 func (c *UserController) FindByID(ctx *gin.Context) {
 	id, _ := utils.GetSlugParam(ctx, "id")
-	data, err := c.app.GetService().UserService.FindById(ctx, id)
+	data, err := c.app.GetService().GetUserService().FindById(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			utils.SendError(ctx, http.StatusNotFound, err.Error(), err)
@@ -104,7 +104,7 @@ func (c *UserController) Create(ctx *gin.Context) {
 		return
 	}
 
-	err := c.app.GetService().UserService.Create(ctx, &req)
+	err := c.app.GetService().GetUserService().Create(ctx, &req)
 	if err != nil {
 		utils.SendError(ctx, http.StatusInternalServerError, err.Error(), err)
 		return
@@ -138,7 +138,7 @@ func (c *UserController) Update(ctx *gin.Context) {
 		return
 	}
 
-	err := c.app.GetService().UserService.Update(ctx, id, &req)
+	err := c.app.GetService().GetUserService().Update(ctx, id, &req)
 	if err != nil {
 		utils.SendError(ctx, http.StatusInternalServerError, err.Error(), err)
 		return
@@ -159,7 +159,7 @@ func (c *UserController) Update(ctx *gin.Context) {
 func (c *UserController) Delete(ctx *gin.Context) {
 	id, _ := utils.GetSlugParam(ctx, "id")
 
-	err := c.app.GetService().UserService.Delete(ctx, id)
+	err := c.app.GetService().GetUserService().Delete(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			utils.SendError(ctx, http.StatusNotFound, "User not found", nil)

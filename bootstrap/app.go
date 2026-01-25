@@ -7,6 +7,7 @@ import (
 	"go-starter-app/app/services"
 	"go-starter-app/app/validation"
 	"go-starter-app/config"
+	"go-starter-app/interfaces"
 	"go-starter-app/pkg/database"
 	"go-starter-app/pkg/google"
 	"go-starter-app/pkg/oca"
@@ -14,6 +15,7 @@ import (
 	"go-starter-app/pkg/storage"
 	"log"
 	"os"
+
 	"github.com/minio/minio-go/v7"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
@@ -50,8 +52,13 @@ func NewAppBootstrap() (*App, error) {
 	}
 	a.db = db
 
-	// initialize redis connection
-	a.redis = database.NewRedis(cfg)
+	// initialize redis connection if enabled
+	if cfg.Redis().Enabled {
+		a.redis = database.NewRedis(cfg)
+	} else {
+		log.Println("Redis disabled via config")
+		a.redis = nil
+	}
 
 	// initialize minio client
 	minioClient, err := storage.NewMinio(cfg)
@@ -100,7 +107,7 @@ func (a *App) GetDB() *gorm.DB {
 }
 
 // GetRedis returns redis client instance
-func (a *App) GetRedis() *redis.Client {
+func (a *App) GetRedis() interface{} {
 	return a.redis
 }
 
@@ -125,7 +132,7 @@ func (a *App) GetRepo() *repositories.RepoContainer {
 }
 
 // GetService returns app services container instance
-func (a *App) GetService() *services.ServiceContainer {
+func (a *App) GetService() interfaces.IServiceContainer {
 	return a.srvc
 }
 

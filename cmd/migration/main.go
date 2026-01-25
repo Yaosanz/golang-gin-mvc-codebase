@@ -5,6 +5,7 @@ import (
 	"go-starter-app/config"
 	"go-starter-app/pkg/database"
 	"log"
+
 	//"os"
 	"errors"
 	"strconv"
@@ -106,7 +107,7 @@ func runMigrations(command string, version int) {
 
 	// Initialize migration instance
 	m, err := migrate.NewWithDatabaseInstance(
-		"file://database/migrations",
+		"file://../../database/migrations",
 		"postgres",
 		driver,
 	)

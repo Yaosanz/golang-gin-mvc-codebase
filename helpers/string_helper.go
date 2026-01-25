@@ -93,6 +93,43 @@ func GenerateSlug(input string) string {
 	return slug
 }
 
+// GenerateSlugFromURL generate slug from URL by extracting important words
+//
+// Usage:
+// - use this helper to generate slug from URL
+// Params:
+// - url: string
+// Returns:
+// - string
+func GenerateSlugFromURL(url string) string {
+	// Remove protocol
+	url = regexp.MustCompile(`^https?://`).ReplaceAllString(url, "")
+
+	// Remove www.
+	url = strings.TrimPrefix(url, "www.")
+
+	// Split by / and take the first part (domain), then path
+	parts := strings.Split(url, "/")
+	if len(parts) > 1 {
+		// Take domain and first path segment
+		domain := parts[0]
+		path := parts[1]
+
+		// Remove query params from path
+		path = strings.Split(path, "?")[0]
+		path = strings.Split(path, "#")[0]
+
+		// Combine domain and path
+		combined := domain + "-" + path
+
+		// Generate slug
+		return GenerateSlug(combined)
+	}
+
+	// If no path, just domain
+	return GenerateSlug(parts[0])
+}
+
 // ParamInt64 extracts a path parameter by key and converts it to int64.
 // Returns (value, error).
 func ParamInt64(ctx *gin.Context, key string) (int64, error) {

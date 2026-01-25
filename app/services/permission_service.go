@@ -4,8 +4,6 @@ import (
 	"context"
 
 	"go-starter-app/app/repositories"
-
-	"github.com/google/uuid"
 )
 
 type PermissionService struct {
@@ -18,6 +16,6 @@ func NewPermissionService(deps IServiceDependencies) *PermissionService {
 	}
 }
 
-func (s *PermissionService) HasPermission(ctx context.Context, roleID uuid.UUID, code string) (bool, error) {
-	return s.permissionRepo.HasPermission(ctx, roleID, code)
+func (s *PermissionService) HasPermission(ctx context.Context, roleName string, code string) (bool, error) {
+	return s.permissionRepo.HasPermission(ctx, roleName, code)
 }

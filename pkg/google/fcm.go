@@ -88,7 +88,7 @@ func (s *FCM) SendBatchNotification(tokens []string, title, body, image string, 
 		// Send notification for the current batch
 		err := s.SendBulkNotification(batchTokens, title, body, image, data)
 		if err != nil {
-			s.logger.Println("[BATCH] error sending batch notification (tokens %d-%d): %v", i, end-1, err)
+			s.logger.Printf("[BATCH] error sending batch notification (tokens %d-%d): %v", i, end-1, err)
 		}
 	}
 }
@@ -101,7 +101,7 @@ func (s *FCM) SendBulkNotification(tokens []string, title, body, image string, d
 		Notification: &messaging.Notification{
 			Title:    title,
 			Body:     body,
-			ImageURL: image, // Optional: Set image URL
+			ImageURL: image, 
 		},
 	}
 

@@ -3,6 +3,7 @@ package v1
 import (
 	controllerV1 "go-starter-app/app/http/controllers/v1"
 	"go-starter-app/app/http/middleware"
+	"go-starter-app/app/services"
 	"go-starter-app/interfaces"
 
 	"github.com/gin-gonic/gin"
@@ -15,40 +16,20 @@ func UserRoute(
 ) {
 	controller := controllerV1.NewUserController(app)
 
-	users := router.Group(
+	// Get secure auth middleware
+	secureAuth := middleware.NewSecureAuthMiddleware(app.GetService().GetAuthService().(*services.SecureAuthService), app.GetConfig().Jwt())
+
+	// ADMIN ONLY - User Management
+	adminUsers := router.Group(
 		"/users",
-		mw.GetRouteMiddleware("jwt"),
+		secureAuth.AuthRequired(),
+		secureAuth.AdminRequired(), // Only admin can manage users
 	)
-
 	{
-		users.GET(
-			"",
-			middleware.RequirePermission("user:read"),
-			controller.FindAll,
-		)
-
-		users.GET(
-			"/:id",
-			middleware.RequirePermission("user:read"),
-			controller.FindByID, 
-		)
-
-		users.POST(
-			"",
-			middleware.RequirePermission("user:create"),
-			controller.Create,
-		)
-
-		users.PATCH(
-			"/:id",
-			middleware.RequirePermission("user:update"),
-			controller.Update,
-		)
-
-		users.DELETE(
-			"/:id",
-			middleware.RequirePermission("user:delete"),
-			controller.Delete,
-		)
+		adminUsers.GET("", controller.FindAll)     // Admin can list all users
+		adminUsers.GET("/:id", controller.FindByID) // Admin can view any user
+		adminUsers.POST("", controller.Create)      // Admin can create users
+		adminUsers.PATCH("/:id", controller.Update) // Admin can update any user
+		adminUsers.DELETE("/:id", controller.Delete) // Admin can delete users
 	}
 }

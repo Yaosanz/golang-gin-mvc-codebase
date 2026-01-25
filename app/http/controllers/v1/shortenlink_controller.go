@@ -9,6 +9,7 @@ import (
 	"go-starter-app/interfaces"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -43,14 +44,15 @@ func (c *ShortenlinkController) Create(ctx *gin.Context) {
 		utils.SendError(ctx, http.StatusUnauthorized, "User not authenticated", nil)
 		return
 	}
-	userID, ok := userIDVal.(string)
-	if !ok || userID == "" {
+	userIDUUID, ok := userIDVal.(uuid.UUID)
+	if !ok {
 		utils.SendError(ctx, http.StatusUnauthorized, "Invalid user id", nil)
 		return
 	}
+	userID := userIDUUID.String()
 
 	data, err := c.app.GetService().
-		ShortenlinkService.
+		GetShortenlinkService().
 		Create(ctx.Request.Context(), req.OriginalURL, userID)
 
 	if err != nil {
@@ -71,14 +73,15 @@ func (c *ShortenlinkController) FindAll(ctx *gin.Context) {
 		utils.SendError(ctx, http.StatusUnauthorized, "User not authenticated", nil)
 		return
 	}
-	userID, ok := userIDVal.(string)
-	if !ok || userID == "" {
+	userIDUUID, ok := userIDVal.(uuid.UUID)
+	if !ok {
 		utils.SendError(ctx, http.StatusUnauthorized, "Invalid user id", nil)
 		return
 	}
+	userID := userIDUUID.String()
 
 	data, err := c.app.GetService().
-		ShortenlinkService.
+		GetShortenlinkService().
 		FindAll(ctx.Request.Context(), userID)
 	if err != nil {
 		utils.SendError(ctx, http.StatusInternalServerError, err.Error(), err)
@@ -104,15 +107,16 @@ func (c *ShortenlinkController) FindByID(ctx *gin.Context) {
 		utils.SendError(ctx, http.StatusUnauthorized, "User not authenticated", nil)
 		return
 	}
-	userID, ok := userIDVal.(string)
-	if !ok || userID == "" {
+	userIDUUID, ok := userIDVal.(uuid.UUID)
+	if !ok {
 		utils.SendError(ctx, http.StatusUnauthorized, "Invalid user id", nil)
 		return
 	}
+	userID := userIDUUID.String()
 
 	data, err := c.app.GetService().
-		ShortenlinkService.
-		FindByID(ctx.Request.Context(), id, userID)
+		GetShortenlinkService().
+		FindById(ctx.Request.Context(), id, userID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			utils.SendError(ctx, http.StatusNotFound, "Shortlink not found", nil)
@@ -147,14 +151,15 @@ func (c *ShortenlinkController) Update(ctx *gin.Context) {
 		utils.SendError(ctx, http.StatusUnauthorized, "User not authenticated", nil)
 		return
 	}
-	userID, ok := userIDVal.(string)
-	if !ok || userID == "" {
+	userIDUUID, ok := userIDVal.(uuid.UUID)
+	if !ok {
 		utils.SendError(ctx, http.StatusUnauthorized, "Invalid user id", nil)
 		return
 	}
+	userID := userIDUUID.String()
 
-	data, err := c.app.GetService().
-		ShortenlinkService.
+	_, err := c.app.GetService().
+		GetShortenlinkService().
 		Update(ctx.Request.Context(), id, req.OriginalURL, userID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -165,7 +170,7 @@ func (c *ShortenlinkController) Update(ctx *gin.Context) {
 		return
 	}
 
-	utils.SendOne(ctx, data, http.StatusText(http.StatusOK), nil)
+	utils.SendOne(ctx, nil, http.StatusText(http.StatusOK), nil)
 }
 
 //
@@ -184,14 +189,15 @@ func (c *ShortenlinkController) Delete(ctx *gin.Context) {
 		utils.SendError(ctx, http.StatusUnauthorized, "User not authenticated", nil)
 		return
 	}
-	userID, ok := userIDVal.(string)
-	if !ok || userID == "" {
+	userIDUUID, ok := userIDVal.(uuid.UUID)
+	if !ok {
 		utils.SendError(ctx, http.StatusUnauthorized, "Invalid user id", nil)
 		return
 	}
+	userID := userIDUUID.String()
 
 	err := c.app.GetService().
-		ShortenlinkService.
+		GetShortenlinkService().
 		Delete(ctx.Request.Context(), id, userID)
 
 	if err != nil {
@@ -217,9 +223,9 @@ func (c *ShortenlinkController) Redirect(ctx *gin.Context) {
 		return
 	}
 
-	data, err := c.app.GetService().
-		ShortenlinkService.
-		GetByCode(ctx.Request.Context(), code)
+	originalURL, err := c.app.GetService().
+		GetShortenlinkService().
+		Redirect(ctx.Request.Context(), code)
 
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -230,5 +236,5 @@ func (c *ShortenlinkController) Redirect(ctx *gin.Context) {
 		return
 	}
 
-	ctx.Redirect(http.StatusMovedPermanently, data.OriginalURL)
+	ctx.Redirect(http.StatusMovedPermanently, originalURL)
 }

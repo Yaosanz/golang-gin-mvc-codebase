@@ -2,7 +2,6 @@ package interfaces
 
 import (
 	"go-starter-app/app/repositories"
-	"go-starter-app/app/services"
 	"go-starter-app/app/validation"
 	"go-starter-app/config"
 	"go-starter-app/pkg/oca"
@@ -12,7 +11,7 @@ import (
 type KernelDependencies interface {
 	GetConfig() *config.Config
 	GetRepo() *repositories.RepoContainer
-	GetService() *services.ServiceContainer
+	GetService() IServiceContainer
 	GetValidator() *validation.AppValidator
 	GetOca() *oca.Client
 }

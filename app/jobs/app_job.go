@@ -3,7 +3,6 @@ package jobs
 import (
 	"fmt"
 	"go-starter-app/app/repositories"
-	"go-starter-app/app/services"
 	"go-starter-app/interfaces"
 	"go-starter-app/pkg/scheduler"
 	"log"
@@ -14,7 +13,7 @@ import (
 
 type AppDependencies interface {
 	GetDB() *gorm.DB
-	GetService() *services.ServiceContainer
+	GetService() interfaces.IServiceContainer
 	GetRepo() *repositories.RepoContainer
 }
 

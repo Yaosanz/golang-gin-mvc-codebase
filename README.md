@@ -12,6 +12,7 @@ A robust Go web application built with Gin framework, featuring MVC architecture
 - **Database Seeding**: Automated data seeding for development and testing
 - **Middleware Support**: CORS, authentication, authorization middleware
 - **Swagger Documentation**: Auto-generated API documentation
+- **Redis Caching**: Optional Redis caching for improved performance (can be disabled)
 - **Docker Support**: Containerized deployment ready
 
 ## Prerequisites
@@ -23,17 +24,20 @@ A robust Go web application built with Gin framework, featuring MVC architecture
 ## Installation
 
 1. Clone the repository:
+
 ```bash
 git clone <repository_url>
 cd golang-gin-mvc-codebase
 ```
 
 2. Install dependencies:
+
 ```bash
 go mod tidy
 ```
 
 3. Set up environment variables (create `.env` file based on `.env.example`):
+
 ```bash
 # Database configuration
 DB_HOST=localhost
@@ -45,17 +49,26 @@ DB_NAME=corpu
 # JWT configuration
 JWT_SECRET=your_jwt_secret
 
+# Redis configuration (optional, for caching)
+REDIS_ENABLED=true
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=
+REDIS_DB=0
+
 # Other configurations...
 ```
 
 ## Database Setup
 
 ### Create Database
+
 ```bash
 createdb -U postgres corpu
 ```
 
 ### Run Migrations
+
 ```bash
 # Option 1: Using Go command
 go run cmd/migration/main.go up
@@ -71,6 +84,7 @@ psql -U postgres -d corpu -f database/migrations/000008_fix_role_permissions_fk.
 ```
 
 ### Run Seeders
+
 ```bash
 # Run all seeders
 go run ./cmd/seeder/main.go run:all
@@ -83,6 +97,7 @@ go run ./cmd/seeder/main.go run:one user_seeder
 ```
 
 ### Database Rollback (if needed)
+
 ```bash
 # Rollback migrations
 go run cmd/migration/main.go down
@@ -98,6 +113,7 @@ psql -U postgres -d corpu -f database/migrations/000008_fix_role_permissions_fk.
 ## Running the Application
 
 ### Development Mode
+
 ```bash
 go run cmd/app/main.go
 ```
@@ -105,12 +121,14 @@ go run cmd/app/main.go
 The server will start on `http://localhost:8080`
 
 ### Build and Run
+
 ```bash
 go build -o app cmd/app/main.go
 ./app
 ```
 
 ### Clean Build
+
 ```bash
 go clean -cache
 go mod tidy
@@ -120,15 +138,19 @@ go run cmd/app/main.go
 ## API Documentation
 
 ### Swagger UI
+
 Access the API documentation at: `http://localhost:8080/swagger/index.html`
 
 ### Authentication
+
 The API uses JWT tokens for authentication. Include the token in the Authorization header:
+
 ```
 Authorization: Bearer <your_jwt_token>
 ```
 
 ### Default Users
+
 After running seeders, you can use these default credentials:
 
 - **Admin User**: `admin` / `secret123`
@@ -137,10 +159,12 @@ After running seeders, you can use these default credentials:
 ## API Endpoints
 
 ### Authentication
+
 - `POST /api/v1/auth/login` - User login
 - `POST /api/v1/auth/register` - User registration
 
 ### Users Management (Admin only)
+
 - `GET /api/v1/users` - List users
 - `GET /api/v1/users/{id}` - Get user by ID
 - `POST /api/v1/users` - Create user
@@ -148,6 +172,7 @@ After running seeders, you can use these default credentials:
 - `DELETE /api/v1/users/{id}` - Delete user
 
 ### URL Shortener
+
 - `GET /api/v1/shorten-links` - List shortened links
 - `POST /api/v1/shorten-links` - Create shortened link
 - `GET /api/v1/shorten-links/{id}` - Get shortened link
@@ -185,6 +210,7 @@ After running seeders, you can use these default credentials:
 ## Database Seeding
 
 ### Seeder CLI Usage
+
 ```bash
 # List all available seeders
 go run ./cmd/seeder/main.go list
@@ -200,6 +226,7 @@ go run ./cmd/seeder/main.go run:all-tx
 ```
 
 ### Available Seeders
+
 - `permission_seeder` - Creates user permissions
 - `role_seeder` - Creates user roles
 - `role_permissions_seeder` - Assigns permissions to roles
@@ -221,6 +248,7 @@ go test ./app/services/...
 ## Docker Support
 
 Build and run with Docker:
+
 ```bash
 # Build image
 docker build -t go-starter-app .
@@ -238,6 +266,7 @@ docker run -p 8080:8080 go-starter-app
 5. Open a Pull Request
 
 ### Development Guidelines
+
 - Follow Go naming conventions
 - Write tests for new features
 - Update documentation as needed

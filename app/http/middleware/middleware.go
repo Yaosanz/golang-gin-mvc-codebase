@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"go-starter-app/app/services"
 	"go-starter-app/interfaces"
 
 	"github.com/gin-gonic/gin"
@@ -34,7 +35,9 @@ func (m *Middleware) Register(app interfaces.IAppDependencies) {
 	m.groupMiddleware["web"] = []gin.HandlerFunc{}
 
 	// Route middleware
-	m.routeMiddleware["jwt"] = JWTAuthMiddleware(app)
+	secureAuth := NewSecureAuthMiddleware(app.GetService().GetAuthService().(*services.SecureAuthService), app.GetConfig().Jwt())
+	m.routeMiddleware["jwt"] = secureAuth.AuthRequired()
+	m.routeMiddleware["secure_auth"] = secureAuth.AuthRequired()
 }
 
 

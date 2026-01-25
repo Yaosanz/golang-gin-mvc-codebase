@@ -15,6 +15,7 @@ func RoleSeeder(db *gorm.DB) error {
 	roles := []models.Role{
 		{Name: "admin"},
 		{Name: "user"},
+		{Name: "cms"},
 	}
 
 	for _, role := range roles {

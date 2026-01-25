@@ -29,9 +29,9 @@ func (ctl *AuthController) Login(c *gin.Context) {
 		return
 	}
 
-	token, err := ctl.app.GetService().
-		AuthService.
-		Login(c.Request.Context(), req.Username, req.Password)
+	token, _, err := ctl.app.GetService().
+		GetAuthService().
+		SecureLogin(c.Request.Context(), req.Username, req.Password)
 
 	if err != nil {
 		utils.SendError(c, http.StatusUnauthorized, "Invalid username or password", nil)
@@ -54,8 +54,8 @@ func (ctl *AuthController) Register(c *gin.Context) {
 	}
 
 	err := ctl.app.GetService().
-		AuthService.
-		Register(c.Request.Context(), req)
+		GetAuthService().
+		Register(c.Request.Context(), &req)
 
 	if err != nil {
 		utils.SendError(c, http.StatusBadRequest, err.Error(), nil)
