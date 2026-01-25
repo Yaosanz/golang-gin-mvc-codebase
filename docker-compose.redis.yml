@@ -1,0 +1,21 @@
+# Redis untuk development & testing (Docker Desktop)
+# Jalankan: docker compose -f docker-compose.redis.yml up -d
+# Stop:    docker compose -f docker-compose.redis.yml down
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: byn-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly no
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  redis_data:

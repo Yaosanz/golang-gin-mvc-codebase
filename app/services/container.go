@@ -10,6 +10,7 @@ import (
 	"go-starter-app/pkg/oca"
 
 	"github.com/minio/minio-go/v7"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
@@ -24,6 +25,7 @@ type IServiceDependencies interface {
 	GetFcm() *google.FCM
 	GetMinio() *minio.Client
 	GetOca() *oca.Client
+	GetRedis() *redis.Client
 }
 
 // SERVICE CONTAINER
@@ -48,9 +50,7 @@ func NewServiceContainer(deps IServiceDependencies) *ServiceContainer {
 			cfg.ExpiredIn,
 		),
 
-		ShortenlinkService: NewShortenlinkService(
-			deps.GetRepo().ShortenlinkRepo,
-		),
+		ShortenlinkService: NewShortenlinkService(deps),
 
 		PermissionService: NewPermissionService(deps),
 	}

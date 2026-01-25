@@ -55,7 +55,7 @@ func (ctl *AuthController) Register(c *gin.Context) {
 
 	err := ctl.app.GetService().
 		AuthService.
-		Register(c.Request.Context(), req)
+		Register(c.Request.Context(), req, c.ClientIP())
 
 	if err != nil {
 		utils.SendError(c, http.StatusBadRequest, err.Error(), nil)

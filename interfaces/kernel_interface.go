@@ -6,6 +6,8 @@ import (
 	"go-starter-app/app/validation"
 	"go-starter-app/config"
 	"go-starter-app/pkg/oca"
+
+	"github.com/redis/go-redis/v9"
 )
 
 // KernelDependencies defines the dependencies required by the http kernel.
@@ -15,4 +17,5 @@ type KernelDependencies interface {
 	GetService() *services.ServiceContainer
 	GetValidator() *validation.AppValidator
 	GetOca() *oca.Client
+	GetRedis() *redis.Client
 }

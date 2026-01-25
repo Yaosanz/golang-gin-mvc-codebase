@@ -11,27 +11,30 @@ import (
 	"go-starter-app/app/repositories"
 
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
+const shortenCacheTTL = 24 * time.Hour
+
 type IShortenlinkService interface {
-Create(ctx context.Context, originalURL, userID string) (*models.ShortenLink, error)
-FindAll(ctx context.Context, userID string) ([]*models.ShortenLink, error)
-FindByID(ctx context.Context, id, userID string) (*models.ShortenLink, error)
-Update(ctx context.Context, id, originalURL, userID string) (*models.ShortenLink, error)
-Delete(ctx context.Context, id, userID string) error
-GetByCode(ctx context.Context, code string) (*models.ShortenLink, error)
+	Create(ctx context.Context, originalURL, userID string) (*models.ShortenLink, error)
+	FindAll(ctx context.Context, userID string) ([]*models.ShortenLink, error)
+	FindByID(ctx context.Context, id, userID string) (*models.ShortenLink, error)
+	Update(ctx context.Context, id, originalURL, userID string) (*models.ShortenLink, error)
+	Delete(ctx context.Context, id, userID string) error
+	GetByCode(ctx context.Context, code string) (*models.ShortenLink, error)
 }
 
 type ShortenlinkService struct {
-	repo repositories.IShortenlinkRepo
+	repo  repositories.IShortenlinkRepo
+	redis *redis.Client
 }
 
-func NewShortenlinkService(
-	repo repositories.IShortenlinkRepo,
-) IShortenlinkService {
+func NewShortenlinkService(deps IServiceDependencies) IShortenlinkService {
 	return &ShortenlinkService{
-		repo: repo,
+		repo:  deps.GetRepo().ShortenlinkRepo,
+		redis: deps.GetRedis(),
 	}
 }
 
@@ -68,6 +71,11 @@ func (s *ShortenlinkService) Create(
 	// Simpan ke repository
 	if err := s.repo.Create(ctx, data); err != nil {
 		return nil, err
+	}
+
+	// Redis: cache code -> original URL untuk redirect cepat
+	if s.redis != nil {
+		_ = s.redis.Set(ctx, "shorten:code:"+data.ShortCode, data.OriginalURL, shortenCacheTTL).Err()
 	}
 
 	return data, nil
@@ -166,6 +174,11 @@ func (s *ShortenlinkService) Update(
 		return nil, err
 	}
 
+	// Redis: perbarui cache
+	if s.redis != nil {
+		_ = s.redis.Set(ctx, "shorten:code:"+data.ShortCode, data.OriginalURL, shortenCacheTTL).Err()
+	}
+
 	return data, nil
 }
 
@@ -177,12 +190,25 @@ func (s *ShortenlinkService) GetByCode(
 	code string,
 ) (*models.ShortenLink, error) {
 
+	// Redis: baca dari cache dulu (redirect paling sering dipanggil)
+	if s.redis != nil {
+		url, err := s.redis.Get(ctx, "shorten:code:"+code).Result()
+		if err == nil {
+			return &models.ShortenLink{ShortCode: code, OriginalURL: url}, nil
+		}
+	}
+
 	data, err := s.repo.FindByCode(ctx, code)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("shortlink not found")
 		}
 		return nil, err
+	}
+
+	// Redis: isi cache untuk permintaan berikutnya
+	if s.redis != nil {
+		_ = s.redis.Set(ctx, "shorten:code:"+data.ShortCode, data.OriginalURL, shortenCacheTTL).Err()
 	}
 
 	return data, nil
@@ -205,7 +231,25 @@ func (s *ShortenlinkService) Delete(
 		return errors.New("invalid user id")
 	}
 
-	return s.repo.Delete(ctx, id)
+	// Ambil dulu untuk dapat ShortCode (invalidasi cache)
+	data, err := s.repo.FindById(ctx, id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("shortlink not found")
+		}
+		return err
+	}
+
+	if err := s.repo.Delete(ctx, id); err != nil {
+		return err
+	}
+
+	// Redis: hapus dari cache
+	if s.redis != nil {
+		_ = s.redis.Del(ctx, "shorten:code:"+data.ShortCode).Err()
+	}
+
+	return nil
 }
 
 // ==========================

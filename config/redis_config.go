@@ -21,13 +21,12 @@ func (m *RedisConfig) load(v *viper.Viper) {
 	v.SetDefault("REDIS_PASSWORD", "")
 	v.SetDefault("REDIS_DB", 0)
 
-	err := v.Unmarshal(&m)
-	if err != nil {
-		log.Fatalf("unable to unmarshal RedisConfig: %v", err.Error())
+	if err := v.Unmarshal(m); err != nil {
+		log.Fatalf("unable to unmarshal RedisConfig: %v", err)
 	}
 }
 
 // Addr returns the address of the Redis server in "host:port" format.
 func (c *RedisConfig) Addr() string {
-	return fmt.Sprintf("%s:%d", c.Host, c.Port)
+	return fmt.Sprintf("%s:%s", c.Host, c.Port)
 }
