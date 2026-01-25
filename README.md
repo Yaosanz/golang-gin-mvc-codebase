@@ -216,7 +216,7 @@ If you encounter any issues or have questions:
 
 ## Authors
 
-- **Sandy Budiwirawan** - _Initial work_ - [sandybudiwirawan](https://github.com/Yaosanz)
+- **Sandy Budi Wirawan** - _Initial Work_ - [sandybudiwirawan](https://github.com/Yaosanz)
 
 ## Acknowledgments
 

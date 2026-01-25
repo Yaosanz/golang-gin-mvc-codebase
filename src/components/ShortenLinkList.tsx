@@ -83,8 +83,8 @@ const ShortenLinkList: React.FC = () => {
               <TableRow key={link.ID}>
                 <TableCell>{link.OriginalURL}</TableCell>
                 <TableCell>
-                  <a href={`${window.location.origin}/r/${link.ShortCode}`} target="_blank" rel="noopener noreferrer">
-                    {window.location.origin}/r/{link.ShortCode}
+                  <a href={`${window.location.origin}/mydigilearn/${link.ShortCode}`} target="_blank" rel="noopener noreferrer">
+                    {window.location.origin}/mydigilearn/{link.ShortCode}
                   </a>
                 </TableCell>
                 <TableCell>{new Date(link.CreatedAt).toLocaleDateString()}</TableCell>
