@@ -53,7 +53,8 @@ func (r *UserRepo) FindAll(ctx context.Context, params utils.QueryParams) ([]mod
 	query = query.Scopes(utils.ApplySorting(params))
 	query = query.Scopes(utils.ApplyPagination(params))
 
-	if err := query.Find(&users).Error; err != nil {
+	// Preload roles to avoid errors
+	if err := query.Preload("Roles").Find(&users).Error; err != nil {
 		return nil, 0, err
 	}
 
@@ -62,7 +63,7 @@ func (r *UserRepo) FindAll(ctx context.Context, params utils.QueryParams) ([]mod
 
 func (r *UserRepo) FindById(ctx context.Context, id string) (*models.User, error) {
 	var user models.User
-	err := r.app.GetDBWithContext(ctx).First(&user, "id = ?", id).Error
+	err := r.app.GetDBWithContext(ctx).Preload("Roles").First(&user, "id = ?", id).Error
 	return &user, err
 }
 
