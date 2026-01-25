@@ -107,7 +107,7 @@ func (a *App) GetDB() *gorm.DB {
 }
 
 // GetRedis returns redis client instance
-func (a *App) GetRedis() interface{} {
+func (a *App) GetRedis() *redis.Client {
 	return a.redis
 }
 

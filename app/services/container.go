@@ -27,7 +27,7 @@ type IServiceDependencies interface {
 	GetFcm() *google.FCM
 	GetMinio() *minio.Client
 	GetOca() *oca.Client
-	GetRedis() interface{} // Redis client
+	GetRedis() *redis.Client
 }
 
 // SERVICE CONTAINER
@@ -44,8 +44,7 @@ func NewServiceContainer(deps IServiceDependencies) *ServiceContainer {
 	// Initialize cache (Redis if available, otherwise no-op)
 	var cache helpers.CacheInterface
 	if redisClient := deps.GetRedis(); redisClient != nil {
-		redisCli := redisClient.(*redis.Client)
-		cache = helpers.NewRedisClient(redisCli.Options().Addr, redisCli.Options().Password, redisCli.Options().DB)
+		cache = helpers.NewRedisClient(redisClient.Options().Addr, redisClient.Options().Password, redisClient.Options().DB)
 	} else {
 		cache = helpers.NewNoOpCache()
 	}

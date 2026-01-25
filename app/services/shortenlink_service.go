@@ -12,7 +12,6 @@ import (
 	"go-starter-app/helpers"
 
 	"github.com/google/uuid"
-	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
@@ -41,8 +40,7 @@ func NewShortenlinkService(
 	// Initialize cache (Redis if available, otherwise no-op)
 	var cache helpers.CacheInterface
 	if redisClient := deps.GetRedis(); redisClient != nil {
-		redisCli := redisClient.(*redis.Client)
-		cache = helpers.NewRedisClient(redisCli.Options().Addr, redisCli.Options().Password, redisCli.Options().DB)
+		cache = helpers.NewRedisClient(redisClient.Options().Addr, redisClient.Options().Password, redisClient.Options().DB)
 	} else {
 		cache = helpers.NewNoOpCache()
 	}
