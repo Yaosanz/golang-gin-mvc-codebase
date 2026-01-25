@@ -1,0 +1,136 @@
+package services
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
+	"time"
+
+	"go-starter-app/app/http/dto"
+	"go-starter-app/app/models"
+	"go-starter-app/app/repositories"
+	"go-starter-app/helpers"
+)
+
+type AuthService struct {
+	userRepo   repositories.IUserRepo
+	jwtSecret  string
+	jwtIssuer  string
+	jwtExpired time.Duration
+	deps       IServiceDependencies
+}
+
+func NewAuthService(
+	deps IServiceDependencies,
+	userRepo repositories.IUserRepo,
+	jwtSecret string,
+	jwtIssuer string,
+	jwtExpired time.Duration,
+) *AuthService {
+	return &AuthService{
+		deps:       deps,
+		userRepo:   userRepo,
+		jwtSecret: jwtSecret,
+		jwtIssuer: jwtIssuer,
+		jwtExpired: jwtExpired,
+	}
+}
+
+// =======================
+// LOGIN
+// =======================
+func (s *AuthService) Login(
+	ctx context.Context,
+	username, password string,
+) (string, error) {
+
+	user, err := s.userRepo.FindByUsername(ctx, username)
+	if err != nil {
+		return "", errors.New("invalid credentials")
+	}
+
+	if !helpers.CheckPassword(password, user.Password) {
+		return "", errors.New("invalid credentials")
+	}
+
+	token, err := helpers.GenerateToken(
+		user.ID,
+		user.Username,
+		user.Role,
+		user.RoleID,
+		s.jwtSecret,
+		s.jwtExpired,
+		s.jwtIssuer,
+	)
+	if err != nil {
+		return "", err
+	}
+
+	// Redis: simpan session token untuk validasi/revoke (logout nanti)
+	if rdb := s.deps.GetRedis(); rdb != nil {
+		hash := sha256.Sum256([]byte(token))
+		key := "auth:session:" + hex.EncodeToString(hash[:])
+		_ = rdb.Set(ctx, key, user.ID.String(), s.jwtExpired).Err()
+	}
+
+	return token, nil
+}
+
+// =======================
+// REGISTER
+// =======================
+func (s *AuthService) Register(
+	ctx context.Context,
+	req dto.RegisterDTO,
+	clientIP string,
+) error {
+
+	// Redis: rate limit register per IP (max 5/jam)
+	if rdb := s.deps.GetRedis(); rdb != nil && clientIP != "" {
+		key := "auth:register:ip:" + clientIP
+		count, err := rdb.Incr(ctx, key).Result()
+		if err == nil {
+			if count == 1 {
+				_ = rdb.Expire(ctx, key, time.Hour).Err()
+			}
+			if count > 5 {
+				return errors.New("terlalu banyak percobaan pendaftaran dari IP ini, coba lagi dalam 1 jam")
+			}
+		}
+	}
+
+	// cek username
+	if _, err := s.userRepo.FindByUsername(ctx, req.Username); err == nil {
+		return errors.New("username already exists")
+	}
+
+	// cek email
+	if _, err := s.userRepo.FindByEmail(ctx, req.Email); err == nil {
+		return errors.New("email already exists")
+	}
+
+	hashedPassword, err := helpers.HashPassword(req.Password, 12)
+	if err != nil {
+		return err
+	}
+
+	// Get user role ID
+	var userRole models.Role
+	if err := s.deps.GetDB().Where("name = ?", "user").First(&userRole).Error; err != nil {
+		return err
+	}
+
+	user := &models.User{
+		Name:     req.Name,
+		Username: req.Username,
+		Email:    req.Email,
+		Phone:    req.Phone,
+		Password: hashedPassword,
+		Role:     models.RoleUser,
+		RoleID:   userRole.ID,
+		IsActive: true,
+	}
+
+	return s.userRepo.Create(ctx, user)
+}

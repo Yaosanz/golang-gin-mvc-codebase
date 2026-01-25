@@ -10,6 +10,7 @@ import (
 	"go-starter-app/pkg/server"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -80,6 +81,22 @@ func (k *Kernel) setSwaggerInfo(config *config.Config) {
 func (k *Kernel) registerRoutes() {
 	// swagger docs route
 	k.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	// Redis health check (testing koneksi Redis / Docker Desktop)
+	k.router.GET("/health/redis", func(c *gin.Context) {
+		rdb := k.app.GetRedis()
+		if rdb == nil {
+			c.JSON(503, gin.H{"success": false, "message": "Redis tidak terkoneksi", "redis": "unavailable"})
+			return
+		}
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
+		defer cancel()
+		if err := rdb.Ping(ctx).Err(); err != nil {
+			c.JSON(503, gin.H{"success": false, "message": "Redis ping gagal", "error": err.Error()})
+			return
+		}
+		c.JSON(200, gin.H{"success": true, "message": "Redis OK", "redis": "connected"})
+	})
 
 	// Health check endpoint
 	k.router.GET("/health", func(c *gin.Context) {

@@ -73,17 +73,17 @@ func NewServiceContainer(deps IServiceDependencies) *ServiceContainer {
 	}
 }
 func (sc *ServiceContainer) GetAuthService() interfaces.IAuthService {
-return sc.AuthService
+	return sc.AuthService
 }
 
 func (sc *ServiceContainer) GetUserService() interfaces.IUserService {
-return sc.UserService
+	return sc.UserService
 }
 
 func (sc *ServiceContainer) GetShortenlinkService() interfaces.IShortenlinkService {
-return sc.ShortenlinkService
+	return sc.ShortenlinkService
 }
 
 func (sc *ServiceContainer) GetPermissionService() interfaces.IPermissionService {
-return sc.PermissionService
+	return sc.PermissionService
 }

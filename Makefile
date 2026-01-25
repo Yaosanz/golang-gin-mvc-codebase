@@ -67,3 +67,19 @@ seeder-run-one:
 		exit 1; \
 	fi
 	@go run ${SEEDER_RUNNER} run:one ${name}
+
+###### ---- REDIS ---- ######
+# Start Redis (Docker Desktop)
+.PHONY: redis-up
+redis-up:
+	@docker compose -f docker-compose.redis.yml up -d
+
+# Stop Redis
+.PHONY: redis-down
+redis-down:
+	@docker compose -f docker-compose.redis.yml down
+
+# Test Redis (pastikan Redis sudah jalan: make redis-up)
+.PHONY: test-redis
+test-redis:
+	@go test -v ./pkg/database/ -run Redis

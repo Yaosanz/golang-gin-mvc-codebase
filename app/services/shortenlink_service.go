@@ -16,14 +16,16 @@ import (
 	"gorm.io/gorm"
 )
 
+const shortenCacheTTL = 24 * time.Hour
+
 type IShortenlinkService interface {
-Create(ctx context.Context, originalURL, userID string) (*models.ShortenLink, error)
-FindAll(ctx context.Context, userID string) ([]*models.ShortenLink, error)
-FindById(ctx context.Context, id, userID string) (*models.ShortenLink, error)
-Update(ctx context.Context, id, originalURL, userID string) (*models.ShortenLink, error)
-Delete(ctx context.Context, id, userID string) error
-GetByCode(ctx context.Context, code string) (*models.ShortenLink, error)
-Redirect(ctx context.Context, code string) (string, error)
+	Create(ctx context.Context, originalURL, userID string) (*models.ShortenLink, error)
+	FindAll(ctx context.Context, userID string) ([]*models.ShortenLink, error)
+	FindById(ctx context.Context, id, userID string) (*models.ShortenLink, error)
+	Update(ctx context.Context, id, originalURL, userID string) (*models.ShortenLink, error)
+	Delete(ctx context.Context, id, userID string) error
+	GetByCode(ctx context.Context, code string) (*models.ShortenLink, error)
+	Redirect(ctx context.Context, code string) (string, error)
 }
 
 type ShortenlinkService struct {

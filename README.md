@@ -232,6 +232,48 @@ go run ./cmd/seeder/main.go run:all-tx
 - `role_permissions_seeder` - Assigns permissions to roles
 - `user_seeder` - Creates default users
 
+## Redis (Docker Desktop)
+
+Aplikasi menggunakan Redis untuk cache/session. Untuk development, jalankan Redis via Docker:
+
+```bash
+# Start Redis (port 6379)
+docker compose -f docker-compose.redis.yml up -d
+
+# Cek status
+docker compose -f docker-compose.redis.yml ps
+
+# Stop
+docker compose -f docker-compose.redis.yml down
+```
+
+Atau jalankan container manual:
+```bash
+docker run -d --name byn-redis -p 6379:6379 redis:alpine
+```
+
+Pastikan `.env` berisi:
+```
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
+REDIS_PASSWORD=
+REDIS_DB=0
+```
+
+### Testing Redis
+
+1. **Endpoint health** (aplikasi harus jalan):
+   ```bash
+   curl http://localhost:8080/health/redis
+   ```
+   Respons OK: `{"success":true,"message":"Redis OK","redis":"connected"}`
+
+2. **Unit/integration test**:
+   ```bash
+   # Pastikan Redis sudah jalan, lalu:
+   go test -v ./pkg/database/ -run Redis
+   ```
+
 ## Testing
 
 ```bash
@@ -243,6 +285,9 @@ go test -cover ./...
 
 # Run specific package tests
 go test ./app/services/...
+
+# Run Redis tests only (Redis harus jalan di Docker)
+go test -v ./pkg/database/ -run Redis
 ```
 
 ## Docker Support
