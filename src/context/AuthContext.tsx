@@ -1,10 +1,19 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
+interface UserRole {
+  id?: string;
+  name: string;
+}
+
 interface User {
   user_id: string;
   username: string;
-  role: string;
-  role_id: string;
+  email?: string;
+  name?: string;
+  phone?: string;
+  role?: string; // Legacy single role
+  role_id?: string; // Legacy role ID
+  roles?: (UserRole | string)[]; // New: Array of roles from backend
 }
 
 interface AuthContextType {
@@ -28,8 +37,12 @@ const decodeToken = (token: string): User | null => {
     return {
       user_id: payload.user_id,
       username: payload.username,
-      role: payload.role,
-      role_id: payload.role_id,
+      email: payload.email,
+      name: payload.name,
+      phone: payload.phone,
+      role: payload.role, // Legacy support
+      role_id: payload.role_id, // Legacy support
+      roles: payload.roles, // New: roles array from JWT
     };
   } catch {
     return null;

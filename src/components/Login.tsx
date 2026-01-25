@@ -1,16 +1,16 @@
 import * as React from 'react';
-import { Avatar, Button, CssBaseline, TextField, FormControlLabel, Checkbox, Link, Grid, Box, Typography, Container, Snackbar, Alert } from '@mui/material';
-import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
-import { createTheme, ThemeProvider } from '@mui/material/styles';
+import { Avatar, Button, CssBaseline, TextField, FormControlLabel, Checkbox, Link, Grid, Box, Typography, Container, Snackbar, Alert, Paper, InputAdornment, IconButton, Card, CardContent, Divider, Stack } from '@mui/material';
+import { LockOutlined as LockOutlinedIcon, Visibility as VisibilityIcon, VisibilityOff as VisibilityOffIcon, Email as EmailIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { login as apiLogin } from '../api/auth.ts';
 import { useAuth } from '../context/AuthContext.tsx';
 
-const defaultTheme = createTheme();
-
 export default function Login() {
   const [username, setUsername] = React.useState('');
   const [password, setPassword] = React.useState('');
+  const [showPassword, setShowPassword] = React.useState(false);
+  const [rememberMe, setRememberMe] = React.useState(false);
+  const [isLoading, setIsLoading] = React.useState(false);
   const [snackbar, setSnackbar] = React.useState({
     open: false,
     message: '',
@@ -22,69 +22,243 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setIsLoading(true);
 
     try {
       const res = await apiLogin({ username, password });
 
       login(res.data.access_token);
 
+      if (rememberMe) {
+        localStorage.setItem('rememberMe', 'true');
+        localStorage.setItem('lastUsername', username);
+      }
+
       setSnackbar({
         open: true,
-        message: 'Login successful! Redirecting...',
+        message: 'Login successful! 🎉',
         severity: 'success',
       });
 
       setTimeout(() => {
         navigate('/dashboard');
-      }, 2000);
+      }, 1500);
     } catch (err: any) {
       setSnackbar({
         open: true,
         message: err.response?.status === 401 ? 'Invalid username or password' : 'Login failed. Please try again.',
         severity: 'error',
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  const handleClickShowPassword = () => {
+    setShowPassword(!showPassword);
+  };
+
+  const handleMouseDownPassword = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+  };
+
   return (
-    <ThemeProvider theme={defaultTheme}>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        py: 3,
+      }}
+    >
       <Container component="main" maxWidth="sm">
         <CssBaseline />
-        <Box sx={{ mt: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <Avatar sx={{ m: 1, bgcolor: 'secondary.main' }}>
-            <LockOutlinedIcon />
+        <Paper
+          elevation={10}
+          sx={{
+            p: 4,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            borderRadius: 3,
+            background: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(10px)',
+          }}
+        >
+          {/* Header */}
+          <Avatar
+            sx={{
+              m: 2,
+              width: 60,
+              height: 60,
+              bgcolor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)',
+            }}
+          >
+            <LockOutlinedIcon sx={{ fontSize: '2rem' }} />
           </Avatar>
-          <Typography component="h1" variant="h5">
-            Sign in
+
+          <Typography component="h1" variant="h4" sx={{ fontWeight: 'bold', mb: 1, color: 'text.primary' }}>
+            Welcome Back
           </Typography>
 
-          <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
-            <TextField margin="normal" required fullWidth label="Username" value={username} onChange={(e) => setUsername(e.target.value)} />
-            <TextField margin="normal" required fullWidth label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <Typography variant="body2" color="textSecondary" sx={{ mb: 3, textAlign: 'center' }}>
+            Sign in to your account to continue
+          </Typography>
 
-            <FormControlLabel control={<Checkbox color="primary" />} label="Remember me" />
+          {/* Login Form */}
+          <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              label="Username or Email"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              disabled={isLoading}
+              autoComplete="username"
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <EmailIcon sx={{ color: 'action.active' }} />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 2,
+                },
+              }}
+            />
 
-            <Button type="submit" fullWidth variant="contained" sx={{ mt: 3, mb: 2 }}>
-              Sign In
+            <TextField
+              margin="normal"
+              required
+              fullWidth
+              label="Password"
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={isLoading}
+              autoComplete="current-password"
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <LockOutlinedIcon sx={{ color: 'action.active' }} />
+                  </InputAdornment>
+                ),
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton aria-label="toggle password visibility" onClick={handleClickShowPassword} onMouseDown={handleMouseDownPassword} edge="end" disabled={isLoading}>
+                      {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 2,
+                },
+              }}
+            />
+
+            <FormControlLabel control={<Checkbox color="primary" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} />} label="Remember me" sx={{ mt: 1, mb: 2 }} />
+
+            <Button
+              type="submit"
+              fullWidth
+              variant="contained"
+              sx={{
+                mt: 2,
+                mb: 2,
+                py: 1.5,
+                fontSize: '1rem',
+                fontWeight: 600,
+                borderRadius: 2,
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)',
+                '&:hover': {
+                  boxShadow: '0 6px 20px rgba(102, 126, 234, 0.6)',
+                },
+              }}
+              disabled={isLoading}
+            >
+              {isLoading ? 'Signing in...' : 'Sign In'}
             </Button>
 
-            <Grid container justifyContent="space-between">
-              <Link href="#" variant="body2">
+            {/* Links */}
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} justifyContent="space-between" sx={{ mb: 2 }}>
+              <Link
+                href="#"
+                variant="body2"
+                sx={{
+                  color: 'primary.main',
+                  textDecoration: 'none',
+                  '&:hover': { textDecoration: 'underline' },
+                }}
+              >
                 Forgot password?
               </Link>
-              <Link component="button" variant="body2" onClick={() => navigate('/register')}>
-                Don't have an account? Sign Up
+              <Link
+                component="button"
+                type="button"
+                variant="body2"
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate('/register');
+                }}
+                sx={{
+                  color: 'primary.main',
+                  textDecoration: 'none',
+                  '&:hover': { textDecoration: 'underline' },
+                }}
+              >
+                Sign Up
               </Link>
-            </Grid>
+            </Stack>
           </Box>
+
+          <Divider sx={{ my: 2, width: '100%' }} />
+
+          {/* Demo Credentials Card */}
+          <Card
+            sx={{
+              width: '100%',
+              backgroundColor: '#f5f7fa',
+              border: '1px solid',
+              borderColor: 'divider',
+            }}
+          >
+            <CardContent sx={{ py: 2 }}>
+              <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 1 }}>
+                Demo Credentials (for testing):
+              </Typography>
+              <Stack spacing={0.5}>
+                <Typography variant="caption">
+                  <strong>User:</strong> demo / demo123
+                </Typography>
+                <Typography variant="caption">
+                  <strong>Admin:</strong> admin / admin123
+                </Typography>
+              </Stack>
+            </CardContent>
+          </Card>
+        </Paper>
+
+        {/* Footer */}
+        <Box sx={{ mt: 4, textAlign: 'center', color: 'rgba(255, 255, 255, 0.8)' }}>
+          <Typography variant="body2">© 2024 URL Shortener. All rights reserved.</Typography>
         </Box>
       </Container>
 
+      {/* Snackbar */}
       <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar({ ...snackbar, open: false })} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
         <Alert severity={snackbar.severity} sx={{ width: '100%' }}>
           {snackbar.message}
         </Alert>
       </Snackbar>
-    </ThemeProvider>
+    </Box>
   );
 }
