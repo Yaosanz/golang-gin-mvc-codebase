@@ -145,7 +145,76 @@ func (r *RedisClient) FlushDB(ctx context.Context) error {
 
 // Close closes the Redis connection
 func (r *RedisClient) Close() error {
-	return r.client.Close()
+	if r.client != nil {
+		return r.client.Close()
+	}
+	return nil
+}
+
+// DeleteByPattern deletes keys matching a pattern (Redis-specific)
+func (r *RedisClient) DeleteByPattern(ctx context.Context, pattern string) error {
+	if r.client == nil {
+		return fmt.Errorf("redis client is not initialized")
+	}
+
+	// Use SCAN to find keys matching pattern (non-blocking alternative to KEYS)
+	var cursor uint64
+	var keys []string
+
+	for {
+		scanResult, nextCursor, err := r.client.Scan(ctx, cursor, pattern, 100).Result()
+		if err != nil && err != redis.Nil {
+			return fmt.Errorf("scan error: %w", err)
+		}
+
+		keys = append(keys, scanResult...)
+		cursor = nextCursor
+
+		if cursor == 0 {
+			break
+		}
+	}
+
+	if len(keys) > 0 {
+		return r.client.Del(ctx, keys...).Err()
+	}
+
+	return nil
+}
+
+// Incr increments a counter
+func (r *RedisClient) Incr(ctx context.Context, key string) (int64, error) {
+	return r.client.Incr(ctx, key).Result()
+}
+
+// IncrBy increments by specific value
+func (r *RedisClient) IncrBy(ctx context.Context, key string, increment int64) (int64, error) {
+	return r.client.IncrBy(ctx, key, increment).Result()
+}
+
+// GetInt retrieves and returns as int64
+func (r *RedisClient) GetInt(ctx context.Context, key string) (int64, error) {
+	result, err := r.client.Get(ctx, key).Result()
+	if err != nil {
+		return 0, err
+	}
+
+	var value int64
+	if err := json.Unmarshal([]byte(result), &value); err != nil {
+		// Try simple string conversion
+		_, err := r.client.Get(ctx, key).Int64()
+		return 0, err
+	}
+
+	return value, nil
+}
+
+// Ping checks if Redis is healthy
+func (r *RedisClient) Ping(ctx context.Context) error {
+	if r.client == nil {
+		return fmt.Errorf("redis client is not initialized")
+	}
+	return r.client.Ping(ctx).Err()
 }
 
 // CacheKeyBuilder helps build cache keys

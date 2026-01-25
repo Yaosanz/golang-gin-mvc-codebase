@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/rand"
 	"time"
 
@@ -15,8 +16,6 @@ import (
 	"gorm.io/gorm"
 )
 
-const shortenCacheTTL = 24 * time.Hour
-
 type IShortenlinkService interface {
 	Create(ctx context.Context, originalURL, userID string) (*models.ShortenLink, error)
 	FindAll(ctx context.Context, userID string) ([]*models.ShortenLink, error)
@@ -25,12 +24,14 @@ type IShortenlinkService interface {
 	Delete(ctx context.Context, id, userID string) error
 	GetByCode(ctx context.Context, code string) (*models.ShortenLink, error)
 	Redirect(ctx context.Context, code string) (string, error)
+	InvalidateShortenLinkCache(ctx context.Context, code string) error
 }
 
 type ShortenlinkService struct {
-	repo  repositories.IShortenlinkRepo
-	cache helpers.CacheInterface
-	deps  IServiceDependencies
+	repo         repositories.IShortenlinkRepo
+	cache        helpers.CacheInterface
+	cacheManager *helpers.CacheManager
+	deps         IServiceDependencies
 }
 
 func NewShortenlinkService(
@@ -40,15 +41,21 @@ func NewShortenlinkService(
 	// Initialize cache (Redis if available, otherwise no-op)
 	var cache helpers.CacheInterface
 	if redisClient := deps.GetRedis(); redisClient != nil {
-		cache = helpers.NewRedisClient(redisClient.Options().Addr, redisClient.Options().Password, redisClient.Options().DB)
+		redisCache := helpers.NewRedisClient(
+			redisClient.Options().Addr,
+			redisClient.Options().Password,
+			redisClient.Options().DB,
+		)
+		cache = redisCache
 	} else {
 		cache = helpers.NewNoOpCache()
 	}
 
 	return &ShortenlinkService{
-		repo:  repo,
-		cache: cache,
-		deps:  deps,
+		repo:         repo,
+		cache:        cache,
+		cacheManager: helpers.NewCacheManager(cache),
+		deps:         deps,
 	}
 }
 
@@ -85,7 +92,7 @@ func (s *ShortenlinkService) Create(
 	// Simpan ke repository dengan transaction
 	createdLink, err := helpers.RunInTransactionWithResult(ctx, s.deps.GetDB(), func(ctx context.Context, tx *gorm.DB) (*models.ShortenLink, error) {
 		if err := s.repo.Create(ctx, data); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error creating shortlink: %w", err)
 		}
 		return data, nil
 	})
@@ -93,9 +100,8 @@ func (s *ShortenlinkService) Create(
 		return nil, err
 	}
 
-	// Invalidate caches
-	s.cache.Delete(ctx, helpers.UserShortenLinksCacheKey(userID))
-	s.cache.Delete(ctx, "all_shortenlinks")
+	// Invalidate user's shortlinks list cache after creating new link
+	_ = s.cacheManager.Invalidate(ctx, helpers.UserShortenLinksCacheKey(userID))
 
 	return createdLink, nil
 }
@@ -241,14 +247,14 @@ func (s *ShortenlinkService) Update(
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return nil, errors.New("shortlink not found")
 			}
-			return nil, err
+			return nil, fmt.Errorf("error finding shortlink: %w", err)
 		}
 
 		data.OriginalURL = originalURL
 		data.UpdatedAt = time.Now()
 
 		if err := s.repo.Update(ctx, data); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error updating shortlink: %w", err)
 		}
 
 		return data, nil
@@ -257,8 +263,8 @@ func (s *ShortenlinkService) Update(
 		return nil, err
 	}
 
-	// Invalidate caches
-	s.cache.Delete(ctx,
+	// Invalidate caches after successful update
+	_ = s.cacheManager.Invalidate(ctx,
 		helpers.ShortenLinkByCodeCacheKey(updatedLink.ShortCode),
 		helpers.UserShortenLinksCacheKey(userID),
 	)
@@ -290,11 +296,11 @@ func (s *ShortenlinkService) GetByCode(
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("shortlink not found")
 		}
-		return nil, err
+		return nil, fmt.Errorf("error finding shortlink by code: %w", err)
 	}
 
-	// Cache the result for 1 hour (short links are accessed frequently)
-	s.cache.Set(ctx, cacheKey, *dataPtr, time.Hour)
+	// Cache the result with professional TTL for shortlink codes (longer TTL for read-heavy operation)
+	_ = s.cache.Set(ctx, cacheKey, *dataPtr, helpers.ShortenLinkCodeCacheTTL)
 
 	return dataPtr, nil
 }
@@ -339,23 +345,25 @@ func (s *ShortenlinkService) Delete(
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return errors.New("shortlink not found")
 			}
-			return err
+			return fmt.Errorf("error finding shortlink: %w", err)
 		}
 		linkToDelete = link
 
 		// Delete from database
-		return s.repo.Delete(ctx, id)
+		if err := s.repo.Delete(ctx, id); err != nil {
+			return fmt.Errorf("error deleting shortlink: %w", err)
+		}
+		return nil
 	})
 	if err != nil {
 		return err
 	}
 
-	// Invalidate caches
-	s.cache.Delete(ctx,
+	// Invalidate caches after successful delete
+	_ = s.cacheManager.Invalidate(ctx,
 		helpers.ShortenLinkByCodeCacheKey(linkToDelete.ShortCode),
 		helpers.UserShortenLinksCacheKey(userID),
 	)
-	s.cache.Delete(ctx, "all_shortenlinks")
 
 	return nil
 }
@@ -374,3 +382,27 @@ func generateShortCode() string {
 	}
 	return string(code)
 }
+
+// ==========================
+// CACHE INVALIDATION
+// ==========================
+
+// InvalidateShortenLinkCache removes all cached data for a shortlink
+// Called after updates/deletes to ensure data consistency
+func (s *ShortenlinkService) InvalidateShortenLinkCache(ctx context.Context, code string) error {
+	// Find the shortlink to get user ID for invalidating user's list
+	link, err := s.repo.FindByCode(ctx, code)
+	if err != nil {
+		// Log but don't fail - cache invalidation failure shouldn't break API
+		fmt.Printf("Error finding shortlink for cache invalidation: %v\n", err)
+		return nil
+	}
+
+	keys := []string{
+		helpers.ShortenLinkByCodeCacheKey(code),
+		helpers.UserShortenLinksCacheKey(link.UserID.String()),
+	}
+
+	return s.cacheManager.Invalidate(ctx, keys...)
+}
+

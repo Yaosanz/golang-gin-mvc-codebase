@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"go-starter-app/app/http/dto"
@@ -15,30 +16,40 @@ import (
 )
 
 type UserService struct {
-	app   IServiceDependencies
-	cache helpers.CacheInterface
+	app          IServiceDependencies
+	cache        helpers.CacheInterface
+	cacheManager *helpers.CacheManager
 }
 
 type IUserService interface {
 	FindAll(ctx context.Context, params utils.QueryParams) ([]models.User, int64, error)
 	FindById(ctx context.Context, id string) (*models.User, error)
+	FindByUsername(ctx context.Context, username string) (*models.User, error)
+	FindByEmail(ctx context.Context, email string) (*models.User, error)
 	Create(ctx context.Context, dto *dto.CreateUserDTO) error
 	Update(ctx context.Context, id string, dto *dto.UpdateUserDTO) error
 	Delete(ctx context.Context, id string) error
+	InvalidateUserCache(ctx context.Context, id string) error
 }
 
 func NewUserService(deps IServiceDependencies) *UserService {
 	// Initialize cache (Redis if available, otherwise no-op)
 	var cache helpers.CacheInterface
 	if redisClient := deps.GetRedis(); redisClient != nil {
-		cache = helpers.NewRedisClient(redisClient.Options().Addr, redisClient.Options().Password, redisClient.Options().DB)
+		redisCache := helpers.NewRedisClient(
+			redisClient.Options().Addr,
+			redisClient.Options().Password,
+			redisClient.Options().DB,
+		)
+		cache = redisCache
 	} else {
 		cache = helpers.NewNoOpCache()
 	}
 
 	return &UserService{
-		app:   deps,
-		cache: cache,
+		app:          deps,
+		cache:        cache,
+		cacheManager: helpers.NewCacheManager(cache),
 	}
 }
 
@@ -47,10 +58,10 @@ func (s *UserService) FindAll(ctx context.Context, params utils.QueryParams) ([]
 	return s.app.GetRepo().UserRepo.FindAll(ctx, params)
 }
 
-// FindById retrieves a user by ID with optimized caching
+// FindById retrieves a user by ID with optimized caching strategy
 func (s *UserService) FindById(ctx context.Context, id string) (*models.User, error) {
 	if _, err := uuid.Parse(id); err != nil {
-		return nil, errors.New("invalid user id")
+		return nil, fmt.Errorf("invalid user id: %w", err)
 	}
 
 	cacheKey := helpers.UserCacheKey(id)
@@ -61,9 +72,7 @@ func (s *UserService) FindById(ctx context.Context, id string) (*models.User, er
 	if err == nil && cacheData.ID != "" {
 		// Convert cache data back to User model
 		userID, name, username, email, phone, isActive, role, roleID, err := cacheData.ToUserData()
-		if err != nil {
-			// Cache data corrupted, fall through to database
-		} else {
+		if err == nil {
 			return &models.User{
 				ID:       userID,
 				Name:     name,
@@ -73,9 +82,9 @@ func (s *UserService) FindById(ctx context.Context, id string) (*models.User, er
 				IsActive: isActive,
 				Role:     role,
 				RoleID:   roleID,
-				// Note: Relationships not cached for performance
 			}, nil
 		}
+		// Cache data corrupted, fall through to database
 	}
 
 	// Cache miss or corrupted data, get from database
@@ -84,10 +93,10 @@ func (s *UserService) FindById(ctx context.Context, id string) (*models.User, er
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("user not found")
 		}
-		return nil, err
+		return nil, fmt.Errorf("error finding user: %w", err)
 	}
 
-	// Cache the lightweight version for 5 minutes (reduced from 30 minutes)
+	// Cache the lightweight version with configured TTL
 	cacheData = *models.NewUserCacheData(
 		userPtr.ID,
 		userPtr.Name,
@@ -98,9 +107,41 @@ func (s *UserService) FindById(ctx context.Context, id string) (*models.User, er
 		userPtr.GetPrimaryRole(),
 		userPtr.GetPrimaryRoleID(),
 	)
-	s.cache.Set(ctx, cacheKey, cacheData, 5*time.Minute)
+	_ = s.cache.Set(ctx, cacheKey, cacheData, helpers.UserCacheTTL)
 
 	return userPtr, nil
+}
+
+// FindByUsername retrieves a user by username with caching
+func (s *UserService) FindByUsername(ctx context.Context, username string) (*models.User, error) {
+	if username == "" {
+		return nil, errors.New("username cannot be empty")
+	}
+
+	cacheKey := helpers.UserByUsernameCacheKey(username)
+
+	var user *models.User
+	err := s.cacheManager.GetOrSet(ctx, cacheKey, helpers.UserCacheTTL, func() (interface{}, error) {
+		return s.app.GetRepo().UserRepo.FindByUsername(ctx, username)
+	}, &user)
+
+	return user, err
+}
+
+// FindByEmail retrieves a user by email with caching
+func (s *UserService) FindByEmail(ctx context.Context, email string) (*models.User, error) {
+	if email == "" {
+		return nil, errors.New("email cannot be empty")
+	}
+
+	cacheKey := helpers.UserByEmailCacheKey(email)
+
+	var user *models.User
+	err := s.cacheManager.GetOrSet(ctx, cacheKey, helpers.UserCacheTTL, func() (interface{}, error) {
+		return s.app.GetRepo().UserRepo.FindByEmail(ctx, email)
+	}, &user)
+
+	return user, err
 }
 
 // Create adds a new user
@@ -217,10 +258,19 @@ func (s *UserService) Update(ctx context.Context, id string, dto *dto.UpdateUser
 			password, err := helpers.HashPassword(*dto.Password, 12)
 			if err != nil {
 				return err
-			}
-			user.Password = password
-		}
+			} for this user
+	return s.InvalidateUserCache(ctx, id)
+}
 
+// InvalidateUserCache removes all cached data for a user (used after updates/deletes)
+func (s *UserService) InvalidateUserCache(ctx context.Context, id string) error {
+	keys := []string{
+		helpers.UserCacheKey(id),
+		helpers.UserPermissionsCacheKey(id),
+		helpers.UserRolesCacheKey(id),
+	}
+
+	return s.cacheManager.Invalidate(ctx, keys...)
 		return s.app.GetRepo().UserRepo.Update(ctx, user)
 	})
 	if err != nil {
