@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Container, Paper, Box, Typography, TextField, Button, Avatar, Grid, Card, CardContent, Snackbar, Alert, CircularProgress, Divider } from '@mui/material';
 import { Edit as EditIcon, Save as SaveIcon, Cancel as CancelIcon, Person as PersonIcon } from '@mui/icons-material';
-import { useAuth } from '../context/AuthContext';
-import { getProfile, updateProfile, UpdateProfileRequest } from '../api/auth';
-import AppLayout from './AppLayout';
+import { getProfile, updateProfile, UpdateProfileRequest } from '../api/auth.ts';
+import AppLayout from './AppLayout.tsx';
 
 interface ProfileData {
   id: string;
@@ -17,7 +16,6 @@ interface ProfileData {
 }
 
 const Profile: React.FC = () => {
-  const { user } = useAuth();
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);

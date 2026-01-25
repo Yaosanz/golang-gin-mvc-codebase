@@ -16,9 +16,6 @@ import {
   Alert,
   InputAdornment,
   IconButton,
-  Stepper,
-  Step,
-  StepLabel,
   Card,
   CardContent,
   Divider,
@@ -28,7 +25,6 @@ import {
 import { LockOutlined as LockOutlinedIcon, Visibility as VisibilityIcon, VisibilityOff as VisibilityOffIcon, Email as EmailIcon, Person as PersonIcon, AssignmentInd as AssignmentIndIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { register as apiRegister } from '../api/auth.ts';
-import { Snackbar as SnackbarComponent, Alert as AlertComponent } from '@mui/material';
 
 export default function SignUp() {
   const [username, setUsername] = React.useState('');

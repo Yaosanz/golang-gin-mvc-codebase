@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Container, Paper, Box, Typography, Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Snackbar, Alert, CircularProgress, Card, CardContent, Chip, IconButton, Tooltip, Grid } from '@mui/material';
+import { Container, Paper, Box, Typography, Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Snackbar, Alert, Card, CardContent, Chip, Tooltip, Grid, Skeleton } from '@mui/material';
 import { DataGrid, GridColDef, GridActionsCellItem } from '@mui/x-data-grid';
 import { Edit as EditIcon, Delete as DeleteIcon, ContentCopy as ContentCopyIcon, OpenInNew as OpenInNewIcon, Refresh as RefreshIcon } from '@mui/icons-material';
-import { getAll, update, remove, ShortenLinkResponse } from '../api/shortenlink';
-import AppLayout from './AppLayout';
+import { getAll, update, remove, ShortenLinkResponse } from '../api/shortenlink.ts';
+import AppLayout from './AppLayout.tsx';
 
 const ShortenLinkList: React.FC = () => {
   const [links, setLinks] = useState<ShortenLinkResponse[]>([]);
@@ -118,28 +118,27 @@ const ShortenLinkList: React.FC = () => {
     },
     {
       field: 'created_at',
-      headerName: 'Created',
+      headerName: 'Created At',
       flex: 1,
-      minWidth: 150,
-      renderCell: (params) =>
-        new Date(params.value).toLocaleDateString('id-ID', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-        }),
+      minWidth: 180,
+      valueFormatter: (params) => {
+        try {
+          return new Date(params.value as string).toLocaleString();
+        } catch {
+          return String(params.value ?? '');
+        }
+      },
     },
     {
       field: 'actions',
       type: 'actions',
       headerName: 'Actions',
       flex: 1,
-      minWidth: 150,
+      minWidth: 160,
       getActions: (params) => [
         <GridActionsCellItem
           icon={
-            <Tooltip title="Copy Short URL">
+            <Tooltip title="Copy short URL">
               <ContentCopyIcon />
             </Tooltip>
           }
@@ -185,12 +184,21 @@ const ShortenLinkList: React.FC = () => {
       <Container maxWidth="lg">
         <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Box>
-            <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1 }}>
-              My Shortened Links
-            </Typography>
-            <Typography variant="body2" color="textSecondary">
-              Manage and track all your shortened URLs
-            </Typography>
+            {isLoading ? (
+              <React.Fragment>
+                <Skeleton variant="text" width={220} height={40} />
+                <Skeleton variant="text" width={260} />
+              </React.Fragment>
+            ) : (
+              <React.Fragment>
+                <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1 }}>
+                  My Shortened Links
+                </Typography>
+                <Typography variant="body2" color="textSecondary">
+                  Manage and track all your shortened URLs
+                </Typography>
+              </React.Fragment>
+            )}
           </Box>
           <Button variant="contained" startIcon={<RefreshIcon />} onClick={handleRefresh} disabled={isLoading}>
             Refresh
@@ -227,28 +235,23 @@ const ShortenLinkList: React.FC = () => {
 
         {/* Data Table */}
         <Paper sx={{ height: 'auto', width: '100%' }}>
-          {isLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
-              <CircularProgress />
-            </Box>
-          ) : (
-            <DataGrid
-              rows={links}
-              columns={columns}
-              pageSizeOptions={[5, 10, 25]}
-              paginationModel={paginationModel}
-              onPaginationModelChange={setPaginationModel}
-              sx={{
-                '& .MuiDataGrid-cell': {
-                  borderColor: 'rgba(224, 224, 224, 0.5)',
-                },
-                '& .MuiDataGrid-row:hover': {
-                  backgroundColor: 'rgba(0, 0, 0, 0.02)',
-                },
-              }}
-              getRowId={(row) => row.id}
-            />
-          )}
+          <DataGrid
+            rows={links}
+            columns={columns}
+            pageSizeOptions={[5, 10, 25]}
+            paginationModel={paginationModel}
+            onPaginationModelChange={setPaginationModel}
+            loading={isLoading}
+            sx={{
+              '& .MuiDataGrid-cell': {
+                borderColor: 'rgba(224, 224, 224, 0.5)',
+              },
+              '& .MuiDataGrid-row:hover': {
+                backgroundColor: 'rgba(0, 0, 0, 0.02)',
+              },
+            }}
+            getRowId={(row) => row.id}
+          />
         </Paper>
 
         {/* Edit Dialog */}

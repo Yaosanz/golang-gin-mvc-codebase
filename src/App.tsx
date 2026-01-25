@@ -9,7 +9,9 @@ import Profile from './components/Profile.tsx';
 import ShortenLinksList from './components/ShortenLinksList.tsx';
 import ShortenLinkCreate from './components/ShortenLinkCreate.tsx';
 import UsersList from './components/UsersList.tsx';
+import Settings from './components/Settings.tsx';
 import { AuthProvider, useAuth } from './context/AuthContext.tsx';
+import ErrorBoundary from './components/ErrorBoundary.tsx';
 
 // Enhanced Material-UI theme with custom colors
 const theme = createTheme({
@@ -118,6 +120,18 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ element, requiredRole }
     return <Navigate to="/login" />;
   }
 
+  // Check JWT expiration (exp) if present
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    if (payload?.exp && Date.now() >= payload.exp * 1000) {
+      // Token expired
+      return <Navigate to="/login" />;
+    }
+  } catch (e) {
+    // If token parsing fails, force re-login
+    return <Navigate to="/login" />;
+  }
+
   if (requiredRole && !user?.roles?.some((r) => r.name === requiredRole || r === requiredRole)) {
     return <Navigate to="/dashboard" />;
   }
@@ -130,30 +144,35 @@ function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <AuthProvider>
-        <Router>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/" element={<Navigate to="/dashboard" />} />
+        <ErrorBoundary>
+          <Router>
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/" element={<Navigate to="/dashboard" />} />
 
-            {/* Protected Routes - Dashboard */}
-            <Route path="/dashboard" element={<ProtectedRoute element={<Dashboard />} />} />
+              {/* Protected Routes - Dashboard */}
+              <Route path="/dashboard" element={<ProtectedRoute element={<Dashboard />} />} />
 
-            {/* Protected Routes - Profile */}
-            <Route path="/profile" element={<ProtectedRoute element={<Profile />} />} />
+              {/* Protected Routes - Profile */}
+              <Route path="/profile" element={<ProtectedRoute element={<Profile />} />} />
 
-            {/* Protected Routes - Shortened Links */}
-            <Route path="/links" element={<ProtectedRoute element={<ShortenLinksList />} />} />
-            <Route path="/links/create" element={<ProtectedRoute element={<ShortenLinkCreate />} />} />
+              {/* Protected Routes - Shortened Links */}
+              <Route path="/links" element={<ProtectedRoute element={<ShortenLinksList />} />} />
+              <Route path="/links/create" element={<ProtectedRoute element={<ShortenLinkCreate />} />} />
 
-            {/* Protected Routes - Admin Only - User Management */}
-            <Route path="/users" element={<ProtectedRoute element={<UsersList />} requiredRole="admin" />} />
+              {/* Protected Routes - Admin Only - User Management */}
+              <Route path="/users" element={<ProtectedRoute element={<UsersList />} requiredRole="admin" />} />
 
-            {/* Catch all */}
-            <Route path="*" element={<Navigate to="/dashboard" />} />
-          </Routes>
-        </Router>
+              {/* Protected Routes - Settings */}
+              <Route path="/settings" element={<ProtectedRoute element={<Settings />} />} />
+
+              {/* Catch all */}
+              <Route path="*" element={<Navigate to="/dashboard" />} />
+            </Routes>
+          </Router>
+        </ErrorBoundary>
       </AuthProvider>
     </ThemeProvider>
   );

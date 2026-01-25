@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Container, Box, Typography, Grid, Card, CardContent, CardMedia, Button, Paper, Divider, Alert, CircularProgress, Stack, Chip } from '@mui/material';
-import { Link as LinkIcon, Dashboard as DashboardIcon, People as PeopleIcon, MoreHorizontal as MoreHorizontalIcon, TrendingUp as TrendingUpIcon, Clock as ClockIcon } from '@mui/icons-material';
+import { Container, Box, Typography, Grid, Card, CardContent, Button, Paper, Divider, Alert, CircularProgress, Stack, Chip } from '@mui/material';
+import { Link as LinkIcon, People as PeopleIcon, TrendingUp as TrendingUpIcon, AccessTime as ClockIcon } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext.tsx';
 import { useNavigate } from 'react-router-dom';
 import AppLayout from './AppLayout.tsx';

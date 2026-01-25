@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { AppBar, Toolbar, Typography, IconButton, Drawer, List, ListItem, ListItemIcon, ListItemText, Box, Avatar, Menu, MenuItem, Divider, Badge } from '@mui/material';
 import { Menu as MenuIcon, Dashboard as DashboardIcon, Link as LinkIcon, People as PeopleIcon, Person as PersonIcon, Settings as SettingsIcon, Logout as LogoutIcon, Home as HomeIcon } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/AuthContext.tsx';
 
 interface AppLayoutProps {
   children: React.ReactNode;

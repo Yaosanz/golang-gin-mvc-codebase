@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Container, Paper, Box, Typography, Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Snackbar, Alert, CircularProgress, Card, CardContent, Chip, IconButton, Tooltip, Grid, Tab, Tabs } from '@mui/material';
+import { Container, Paper, Box, Typography, Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Snackbar, Alert, Card, CardContent, Chip, Tooltip, Grid, Skeleton } from '@mui/material';
 import { DataGrid, GridColDef, GridActionsCellItem } from '@mui/x-data-grid';
 import { Edit as EditIcon, Delete as DeleteIcon, Add as AddIcon, Refresh as RefreshIcon, Email as EmailIcon, Phone as PhoneIcon } from '@mui/icons-material';
-import { getAll, update, remove, create, UserResponse } from '../api/user';
-import { useAuth } from '../context/AuthContext';
-import AppLayout from './AppLayout';
+import { getAll, update, remove, create, UserResponse } from '../api/user.ts';
+import { useAuth } from '../context/AuthContext.tsx';
+import AppLayout from './AppLayout.tsx';
 
 interface CreateUserForm {
   name: string;
@@ -24,7 +24,6 @@ const UserList: React.FC = () => {
   const { user: authUser } = useAuth();
   const [users, setUsers] = useState<UserResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [tabValue, setTabValue] = useState(0);
   const [createDialog, setCreateDialog] = useState(false);
   const [editDialog, setEditDialog] = useState<{ open: boolean; user: UserResponse | null }>({
     open: false,
@@ -55,15 +54,15 @@ const UserList: React.FC = () => {
     }
   }, []);
 
-  const isUserAdmin = () => {
+  const isUserAdmin = useCallback(() => {
     return authUser?.roles?.some((r) => (typeof r === 'string' ? r === 'admin' : r.name === 'admin'));
-  };
+  }, [authUser]);
 
   useEffect(() => {
     if (isUserAdmin()) {
       fetchUsers();
     }
-  }, [authUser, fetchUsers]);
+  }, [isUserAdmin, fetchUsers]);
 
   const handleCreateOpen = () => {
     setCreateForm({ name: '', username: '', email: '', phone: '', password: '' });
@@ -287,12 +286,20 @@ const UserList: React.FC = () => {
           <Grid item xs={12} sm={6} md={3}>
             <Card>
               <CardContent sx={{ textAlign: 'center' }}>
-                <Typography color="textSecondary" gutterBottom>
-                  Total Users
-                </Typography>
-                <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-                  {users.length}
-                </Typography>
+                {isLoading ? (
+                  <Skeleton variant="text" width={100} />
+                ) : (
+                  <Typography color="textSecondary" gutterBottom>
+                    Total Users
+                  </Typography>
+                )}
+                {isLoading ? (
+                  <Skeleton variant="rectangular" width={80} height={28} />
+                ) : (
+                  <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                    {users.length}
+                  </Typography>
+                )}
               </CardContent>
             </Card>
           </Grid>
@@ -312,28 +319,23 @@ const UserList: React.FC = () => {
 
         {/* Data Table */}
         <Paper sx={{ height: 'auto', width: '100%' }}>
-          {isLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
-              <CircularProgress />
-            </Box>
-          ) : (
-            <DataGrid
-              rows={users}
-              columns={columns}
-              pageSizeOptions={[5, 10, 25]}
-              paginationModel={paginationModel}
-              onPaginationModelChange={setPaginationModel}
-              sx={{
-                '& .MuiDataGrid-cell': {
-                  borderColor: 'rgba(224, 224, 224, 0.5)',
-                },
-                '& .MuiDataGrid-row:hover': {
-                  backgroundColor: 'rgba(0, 0, 0, 0.02)',
-                },
-              }}
-              getRowId={(row) => row.id}
-            />
-          )}
+          <DataGrid
+            rows={users}
+            columns={columns}
+            pageSizeOptions={[5, 10, 25]}
+            paginationModel={paginationModel}
+            onPaginationModelChange={setPaginationModel}
+            loading={isLoading}
+            sx={{
+              '& .MuiDataGrid-cell': {
+                borderColor: 'rgba(224, 224, 224, 0.5)',
+              },
+              '& .MuiDataGrid-row:hover': {
+                backgroundColor: 'rgba(0, 0, 0, 0.02)',
+              },
+            }}
+            getRowId={(row) => row.id}
+          />
         </Paper>
 
         {/* Create User Dialog */}
