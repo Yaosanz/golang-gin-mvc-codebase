@@ -50,6 +50,22 @@ export interface UpdateProfileRequest {
   phone?: string;
 }
 
+// Transform Go struct field names to camelCase
+const transformProfile = (data: any) => ({
+  code: data.code,
+  message: data.message,
+  data: {
+    id: data.data?.ID || data.data?.id,
+    username: data.data?.username,
+    email: data.data?.email,
+    name: data.data?.name,
+    phone: data.data?.phone,
+    created_at: data.data?.CreatedAt || data.data?.created_at,
+    updated_at: data.data?.UpdatedAt || data.data?.updated_at,
+    roles: data.data?.roles,
+  },
+});
+
 // Login - Task 1: JWT Multi-Role Auth
 export const login = async (data: LoginRequest): Promise<LoginResponse> => {
   const response = await api.post<LoginResponse>('/auth/login', data);
@@ -65,7 +81,7 @@ export const register = async (data: RegisterRequest): Promise<{ code: number; m
 // Get Profile - Task 2: RBAC Token Payload (returns roles array)
 export const getProfile = async (): Promise<ProfileResponse> => {
   const response = await api.get<ProfileResponse>('/auth/profile');
-  return response.data;
+  return transformProfile(response.data);
 };
 
 // Update Profile - Self-service profile update

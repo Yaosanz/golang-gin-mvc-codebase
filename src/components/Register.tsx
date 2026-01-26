@@ -23,10 +23,12 @@ import {
   CircularProgress,
 } from '@mui/material';
 import { LockOutlined as LockOutlinedIcon, Visibility as VisibilityIcon, VisibilityOff as VisibilityOffIcon, Email as EmailIcon, Person as PersonIcon, AssignmentInd as AssignmentIndIcon } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { register as apiRegister } from '../api/auth.ts';
+import { useAuth } from '../context/AuthContext.tsx';
 
 export default function SignUp() {
+  const { token } = useAuth();
   const [username, setUsername] = React.useState('');
   const [name, setName] = React.useState('');
   const [password, setPassword] = React.useState('');
@@ -44,6 +46,11 @@ export default function SignUp() {
     severity: 'success' as 'success' | 'error',
   });
   const navigate = useNavigate();
+
+  // Redirect if already logged in
+  if (token) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   const validate = () => {
     const newErrors: { [key: string]: string } = {};
@@ -76,7 +83,7 @@ export default function SignUp() {
         message: 'Registration successful! 🎉 Redirecting to login...',
         severity: 'success',
       });
-      setTimeout(() => navigate('/login'), 2000);
+      setTimeout(() => navigate('/login', { replace: true }), 2000);
     } catch (err: any) {
       const errorMessage = err.response?.status === 409 ? 'Username or email already exists.' : err.response?.data?.message || 'Registration failed. Please try again.';
       setSnackbar({ open: true, message: errorMessage, severity: 'error' });
@@ -100,12 +107,14 @@ export default function SignUp() {
   return (
     <Box
       sx={{
+        width: '100%',
         minHeight: '100vh',
         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         py: 3,
+        flexGrow: 1,
       }}
     >
       <Container component="main" maxWidth="sm">

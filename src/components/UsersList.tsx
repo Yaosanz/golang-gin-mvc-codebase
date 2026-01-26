@@ -48,7 +48,13 @@ const UserList: React.FC = () => {
       setUsers(result.data);
     } catch (err: any) {
       console.error('Failed to fetch users:', err);
-      setSnackbar({ open: true, message: 'Failed to fetch users', severity: 'error' });
+      console.error('Error response:', err.response?.data);
+      const errorMsg = err.response?.data?.message || err.message || 'Failed to fetch users';
+      setSnackbar({
+        open: true,
+        message: `Backend error (500): ${errorMsg}. Check backend logs for details.`,
+        severity: 'error',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -136,6 +142,11 @@ const UserList: React.FC = () => {
         });
       }
     }
+  };
+
+  // Get row ID from response data structure
+  const getRowId = (row: any) => {
+    return row.id || row.ID || row.username;
   };
 
   const columns: GridColDef[] = [
@@ -334,7 +345,7 @@ const UserList: React.FC = () => {
                 backgroundColor: 'rgba(0, 0, 0, 0.02)',
               },
             }}
-            getRowId={(row) => row.id}
+            getRowId={getRowId}
           />
         </Paper>
 

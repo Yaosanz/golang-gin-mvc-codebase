@@ -1,11 +1,13 @@
 import api from './config.ts';
 
 export interface CreateShortenLinkRequest {
-  url: string;
+  original_url?: string; // Backend expects 'original_url'
+  url?: string; // Frontend may pass 'url', transform it
 }
 
 export interface UpdateShortenLinkRequest {
-  url: string;
+  original_url?: string; // Backend expects 'original_url'
+  url?: string; // Frontend may pass 'url', transform it
 }
 
 export interface ShortenLinkResponse {
@@ -18,47 +20,69 @@ export interface ShortenLinkResponse {
 }
 
 export interface ShortenLinksListResponse {
-  code: number;
+  success?: boolean;
+  code?: number;
   message: string;
-  data: {
-    contents: ShortenLinkResponse[];
-    pagination?: {
-      total_data: number;
-      current_page: number;
-      per_page: number;
-      total_pages: number;
-    };
-  };
+  data:
+    | ShortenLinkResponse[]
+    | {
+        contents: ShortenLinkResponse[];
+        pagination?: {
+          total_data: number;
+          current_page: number;
+          per_page: number;
+          total_pages: number;
+        };
+      };
 }
 
 export interface ShortenLinkDetailResponse {
-  code: number;
+  code?: number;
+  success?: boolean;
   message: string;
   data: ShortenLinkResponse;
 }
 
+// Transform Go struct field names to match frontend interface
+const transformLink = (link: any): ShortenLinkResponse => ({
+  id: link.id,
+  code: link.short_code || link.code, // Backend returns 'short_code'
+  url: link.original_url || link.url, // Backend returns 'original_url'
+  created_at: link.created_at,
+  updated_at: link.updated_at,
+  user_id: link.user_id,
+});
+
 // Get all shortened links for current user - Task 5: Redis Caching
+// Backend list route is registered with trailing slash
 export const getAll = async (): Promise<ShortenLinkResponse[]> => {
-  const response = await api.get<ShortenLinksListResponse>('/shorten-links');
-  return response.data.data?.contents || [];
+  const response = await api.get<ShortenLinksListResponse>('/shorten-links/');
+  const data = response.data.data;
+
+  // Handle both array response and paginated response
+  if (Array.isArray(data)) {
+    return data.map(transformLink);
+  } else {
+    return (data?.contents || []).map(transformLink);
+  }
 };
 
 // Create shortened link - Task 4: Database Transactions & Task 5: Cache Invalidation
 export const create = async (data: CreateShortenLinkRequest): Promise<ShortenLinkResponse> => {
   const response = await api.post<ShortenLinkDetailResponse>('/shorten-links', data);
-  return response.data.data;
+  return transformLink(response.data.data);
 };
 
 // Get shortened link by ID - Task 5: Redis Caching
 export const getById = async (id: string): Promise<ShortenLinkResponse> => {
   const response = await api.get<ShortenLinkDetailResponse>(`/shorten-links/${id}`);
-  return response.data.data;
+  return transformLink(response.data.data);
 };
 
 // Update shortened link - Task 4: Database Transactions & Task 5: Cache Invalidation
 export const update = async (id: string, data: UpdateShortenLinkRequest): Promise<ShortenLinkResponse> => {
   const response = await api.patch<ShortenLinkDetailResponse>(`/shorten-links/${id}`, data);
-  return response.data.data;
+  return transformLink(response.data.data);
 };
 
 // Delete shortened link - Task 5: Cache Invalidation

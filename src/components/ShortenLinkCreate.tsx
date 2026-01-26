@@ -39,7 +39,8 @@ const ShortenLinkCreate: React.FC = () => {
 
     try {
       setIsLoading(true);
-      const result = await create({ url });
+      // Backend expects 'original_url', but we have 'url' from form
+      const result = await create({ original_url: url });
       setCreatedLink(result);
       setRecentLinks([result, ...recentLinks].slice(0, 5));
       setSnackbar({ open: true, message: 'Link shortened successfully! 🎉', severity: 'success' });

@@ -116,8 +116,11 @@ interface ProtectedRouteProps {
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ element, requiredRole }) => {
   const { token, user } = useAuth();
 
+  console.log('ProtectedRoute - token:', !!token, 'user:', user?.username, 'requiredRole:', requiredRole);
+
   if (!token) {
-    return <Navigate to="/login" />;
+    console.log('ProtectedRoute - No token, redirecting to login');
+    return <Navigate to="/login" replace />;
   }
 
   // Check JWT expiration (exp) if present
@@ -125,57 +128,79 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ element, requiredRole }
     const payload = JSON.parse(atob(token.split('.')[1]));
     if (payload?.exp && Date.now() >= payload.exp * 1000) {
       // Token expired
-      return <Navigate to="/login" />;
+      console.log('ProtectedRoute - Token expired, redirecting to login');
+      return <Navigate to="/login" replace />;
     }
   } catch (e) {
     // If token parsing fails, force re-login
-    return <Navigate to="/login" />;
+    console.error('ProtectedRoute - Token parse error:', e);
+    return <Navigate to="/login" replace />;
   }
 
-  if (requiredRole && !user?.roles?.some((r) => r.name === requiredRole || r === requiredRole)) {
-    return <Navigate to="/dashboard" />;
+  if (requiredRole) {
+    const hasRole = user?.roles?.some((r) => r.name === requiredRole || r === requiredRole);
+    console.log('ProtectedRoute - Role check:', requiredRole, 'hasRole:', hasRole, 'userRoles:', user?.roles);
+    if (!hasRole) {
+      console.log('ProtectedRoute - Missing required role, redirecting to dashboard');
+      return <Navigate to="/dashboard" replace />;
+    }
   }
 
+  console.log('ProtectedRoute - Access granted');
   return element;
 };
 
 function App() {
-  return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <AuthProvider>
-        <ErrorBoundary>
-          <Router>
-            <Routes>
-              {/* Public Routes */}
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/" element={<Navigate to="/dashboard" />} />
+  console.log('App component rendering');
 
-              {/* Protected Routes - Dashboard */}
-              <Route path="/dashboard" element={<ProtectedRoute element={<Dashboard />} />} />
+  // Minimal render fallback
+  try {
+    return (
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <Router>
+          <AuthProvider>
+            <ErrorBoundary>
+              <Routes>
+                {/* Public Routes */}
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/" element={<Navigate to="/dashboard" />} />
 
-              {/* Protected Routes - Profile */}
-              <Route path="/profile" element={<ProtectedRoute element={<Profile />} />} />
+                {/* Protected Routes - Dashboard */}
+                <Route path="/dashboard" element={<ProtectedRoute element={<Dashboard />} />} />
 
-              {/* Protected Routes - Shortened Links */}
-              <Route path="/links" element={<ProtectedRoute element={<ShortenLinksList />} />} />
-              <Route path="/links/create" element={<ProtectedRoute element={<ShortenLinkCreate />} />} />
+                {/* Protected Routes - Profile */}
+                <Route path="/profile" element={<ProtectedRoute element={<Profile />} />} />
 
-              {/* Protected Routes - Admin Only - User Management */}
-              <Route path="/users" element={<ProtectedRoute element={<UsersList />} requiredRole="admin" />} />
+                {/* Protected Routes - Shortened Links */}
+                <Route path="/links" element={<ProtectedRoute element={<ShortenLinksList />} />} />
+                <Route path="/links/create" element={<ProtectedRoute element={<ShortenLinkCreate />} />} />
 
-              {/* Protected Routes - Settings */}
-              <Route path="/settings" element={<ProtectedRoute element={<Settings />} />} />
+                {/* Protected Routes - Admin Only - User Management */}
+                <Route path="/users" element={<ProtectedRoute element={<UsersList />} requiredRole="admin" />} />
 
-              {/* Catch all */}
-              <Route path="*" element={<Navigate to="/dashboard" />} />
-            </Routes>
-          </Router>
-        </ErrorBoundary>
-      </AuthProvider>
-    </ThemeProvider>
-  );
+                {/* Protected Routes - Settings */}
+                <Route path="/settings" element={<ProtectedRoute element={<Settings />} />} />
+
+                {/* Catch all */}
+                <Route path="*" element={<Navigate to="/dashboard" />} />
+              </Routes>
+            </ErrorBoundary>
+          </AuthProvider>
+        </Router>
+      </ThemeProvider>
+    );
+  } catch (error) {
+    console.error('App render error:', error);
+    return (
+      <div style={{ padding: '20px', fontFamily: 'Arial' }}>
+        <h1>Application Error</h1>
+        <p>Error: {String(error)}</p>
+        <details style={{ whiteSpace: 'pre-wrap' }}>{String(error)}</details>
+      </div>
+    );
+  }
 }
 
 export default App;

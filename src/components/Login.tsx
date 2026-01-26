@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Avatar, Button, CssBaseline, TextField, FormControlLabel, Checkbox, Link, Box, Typography, Container, Snackbar, Alert, Paper, InputAdornment, IconButton, Card, CardContent, Divider, Stack } from '@mui/material';
 import { LockOutlined as LockOutlinedIcon, Visibility as VisibilityIcon, VisibilityOff as VisibilityOffIcon, Email as EmailIcon } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { login as apiLogin } from '../api/auth.ts';
 import { useAuth } from '../context/AuthContext.tsx';
 
@@ -17,8 +17,13 @@ export default function Login() {
     severity: 'success' as 'success' | 'error',
   });
 
-  const { login } = useAuth();
+  const { login, token } = useAuth();
   const navigate = useNavigate();
+
+  // Redirect if already logged in
+  if (token) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -26,8 +31,19 @@ export default function Login() {
 
     try {
       const res = await apiLogin({ username, password });
+      console.log('Login response full:', res);
+      console.log('Login response data:', res.data);
+      console.log('Login response data.token:', res.data?.token);
 
-      login(res.data.access_token);
+      // Call login from context to save token and decode user
+      // apiLogin already returns response.data, so res is the LoginResponse object
+      const token = res.data?.token;
+      if (!token) {
+        throw new Error('No token received from server');
+      }
+
+      login(token);
+      console.log('Token saved to context:', token);
 
       if (rememberMe) {
         localStorage.setItem('rememberMe', 'true');
@@ -40,10 +56,13 @@ export default function Login() {
         severity: 'success',
       });
 
+      // Use setTimeout to ensure state updates propagate before navigation
       setTimeout(() => {
-        navigate('/dashboard');
-      }, 1500);
+        console.log('Navigating to dashboard...');
+        navigate('/dashboard', { replace: true });
+      }, 100);
     } catch (err: any) {
+      console.error('Login error:', err);
       setSnackbar({
         open: true,
         message: err.response?.status === 401 ? 'Invalid username or password' : 'Login failed. Please try again.',
@@ -65,12 +84,14 @@ export default function Login() {
   return (
     <Box
       sx={{
+        width: '100%',
         minHeight: '100vh',
         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         py: 3,
+        flexGrow: 1,
       }}
     >
       <Container component="main" maxWidth="sm">

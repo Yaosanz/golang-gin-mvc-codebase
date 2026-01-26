@@ -5,12 +5,14 @@ import { useAuth } from '../context/AuthContext.tsx';
 import { useNavigate } from 'react-router-dom';
 import AppLayout from './AppLayout.tsx';
 import { getAll as getAllLinks } from '../api/shortenlink.ts';
+import { getAll as getAllUsers } from '../api/user.ts';
 
 interface DashboardStats {
   totalLinks: number;
   totalUsers: number;
   recentLinks: any[];
   isLoading: boolean;
+  error: string | null;
 }
 
 export default function Dashboard() {
@@ -21,34 +23,55 @@ export default function Dashboard() {
     totalUsers: 0,
     recentLinks: [],
     isLoading: true,
+    error: null,
   });
 
   const fetchStats = useCallback(async () => {
     try {
-      setStats((prev) => ({ ...prev, isLoading: true }));
+      console.log('Fetching stats...');
+      setStats((prev) => ({ ...prev, isLoading: true, error: null }));
+
+      // Fetch links
       const linksData = await getAllLinks();
+      console.log('Links data:', linksData);
+
+      // Fetch users if admin
+      let totalUsers = 0;
+      const isAdmin = user?.roles?.some((r) => r.name === 'admin' || r === 'admin');
+      if (isAdmin) {
+        try {
+          const usersData = await getAllUsers({ limit: 1000 });
+          totalUsers = usersData.data.length;
+          console.log('Users data count:', totalUsers);
+        } catch (userErr) {
+          console.error('Failed to fetch users:', userErr);
+        }
+      }
+
       setStats((prev) => ({
         ...prev,
-        totalLinks: Array.isArray(linksData.data) ? linksData.data.length : linksData.data.contents?.length || 0,
-        recentLinks: Array.isArray(linksData.data) ? linksData.data.slice(0, 5) : linksData.data.contents?.slice(0, 5) || [],
+        totalLinks: linksData.length,
+        totalUsers: totalUsers,
+        recentLinks: linksData.slice(0, 5),
         isLoading: false,
+        error: null,
       }));
-    } catch (err) {
-      console.error('Failed to fetch stats:', err);
-      setStats((prev) => ({ ...prev, isLoading: false }));
+    } catch (err: any) {
+      const apiMsg = err?.response?.data?.message;
+      console.error('Failed to fetch stats:', err?.message, 'backend:', apiMsg);
+      setStats((prev) => ({
+        ...prev,
+        isLoading: false,
+        error: apiMsg || err?.message || 'Failed to load data',
+      }));
     }
-  }, []);
+  }, [user?.roles]);
 
   useEffect(() => {
     if (token) {
       fetchStats();
     }
   }, [token, fetchStats]);
-
-  if (!token) {
-    navigate('/login');
-    return null;
-  }
 
   return (
     <AppLayout>
@@ -64,7 +87,7 @@ export default function Dashboard() {
             }}
           >
             <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1 }}>
-              Welcome back, {user?.name}! 👋
+              Welcome back, {user?.name || user?.username}! 👋
             </Typography>
             <Typography variant="body1" sx={{ opacity: 0.9 }}>
               Here's what's happening with your links today.
@@ -133,7 +156,7 @@ export default function Dashboard() {
                         Total Users
                       </Typography>
                       <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
-                        -
+                        {stats.isLoading ? '-' : stats.totalUsers}
                       </Typography>
                     </Box>
                     <PeopleIcon sx={{ fontSize: '2.5rem', opacity: 0.3 }} />
@@ -194,6 +217,12 @@ export default function Dashboard() {
           </Box>
 
           <Divider sx={{ mb: 2 }} />
+
+          {stats.error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {stats.error}. Backend might not be running on http://localhost:8080
+            </Alert>
+          )}
 
           {stats.isLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>

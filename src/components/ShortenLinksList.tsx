@@ -43,7 +43,8 @@ const ShortenLinkList: React.FC = () => {
     if (!editDialog.link) return;
     try {
       setIsSaving(true);
-      await update(editDialog.link.id, { url: newUrl });
+      // Backend expects 'original_url'
+      await update(editDialog.link.id, { original_url: newUrl });
       setSnackbar({ open: true, message: 'Link updated successfully', severity: 'success' });
       setEditDialog({ open: false, link: null });
       await fetchLinks();

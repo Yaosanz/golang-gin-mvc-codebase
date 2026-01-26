@@ -27,17 +27,20 @@ export interface UserResponse {
 }
 
 export interface UsersListResponse {
-  code: number;
+  success?: boolean;
+  code?: number;
   message: string;
-  data: {
-    contents: UserResponse[];
-    pagination: {
-      total_data: number;
-      current_page: number;
-      per_page: number;
-      total_pages: number;
-    };
-  };
+  data:
+    | UserResponse[]
+    | {
+        contents: UserResponse[];
+        pagination?: {
+          total_data: number;
+          current_page: number;
+          per_page: number;
+          total_pages: number;
+        };
+      };
 }
 
 export interface UserDetailResponse {
@@ -46,15 +49,38 @@ export interface UserDetailResponse {
   data: UserResponse;
 }
 
+// Transform Go struct field names to camelCase
+const transformUser = (user: any): UserResponse => ({
+  id: user.ID || user.id,
+  name: user.name,
+  username: user.username,
+  email: user.email,
+  phone: user.phone,
+  created_at: user.CreatedAt || user.created_at,
+  updated_at: user.UpdatedAt || user.updated_at,
+  roles: user.roles,
+});
+
 // Get all users (Admin only) - Task 2: RBAC
 export const getAll = async (params?: { page?: number; limit?: number; search?: string }): Promise<{ data: UserResponse[]; total: number; page: number; limit: number }> => {
   const response = await api.get<UsersListResponse>('/users', { params });
   const resData = response.data.data;
+
+  // Support both array and paginated responses
+  if (Array.isArray(resData)) {
+    return {
+      data: resData.map(transformUser),
+      total: resData.length,
+      page: 1,
+      limit: resData.length,
+    };
+  }
+
   return {
-    data: resData.contents || [],
-    total: resData.pagination?.total_data || 0,
+    data: (resData.contents || []).map(transformUser),
+    total: resData.pagination?.total_data || resData.contents?.length || 0,
     page: resData.pagination?.current_page || 1,
-    limit: resData.pagination?.per_page || 10,
+    limit: resData.pagination?.per_page || resData.contents?.length || 10,
   };
 };
 
