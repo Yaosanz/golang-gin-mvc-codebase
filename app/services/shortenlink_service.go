@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"math/rand"
 	"time"
 
@@ -139,7 +140,12 @@ func (s *ShortenlinkService) FindAll(
 		if authSvc := svcContainer.GetAuthService(); authSvc != nil {
 			// Check if user has admin role - admin can see all
 			hasAdmin, err := authSvc.CheckRole(ctx, uid, "admin")
-			if err == nil && hasAdmin {
+			if err != nil {
+				// If error checking role, log it but continue as regular user
+				// This could happen if cache expired - user needs to re-login
+				// For now, treat as non-admin
+				canReadAll = false
+			} else if hasAdmin {
 				canReadAll = true
 			} else {
 				// Check if user has CMS role or specific permission
@@ -190,6 +196,7 @@ func (s *ShortenlinkService) FindAll(
 	}
 	links, _, err := s.repo.FindAll(ctx, *params)
 	if err != nil {
+		log.Printf("[ERROR] FindAll repo error: %v", err)
 		return nil, err
 	}
 

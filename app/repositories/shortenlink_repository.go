@@ -10,6 +10,7 @@ import (
 // allowedShortenlinkFilter defines the fields that can be used for filtering shortenlink
 var allowedShortenlinkFilter = map[string]bool{
 	"created_by": true,
+	"user_id":    true,
 }
 
 type ShortenlinkRepo struct {

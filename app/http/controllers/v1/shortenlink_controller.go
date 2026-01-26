@@ -89,6 +89,7 @@ func (c *ShortenlinkController) FindAll(ctx *gin.Context) {
 		GetShortenlinkService().
 		FindAll(ctx.Request.Context(), userID)
 	if err != nil {
+		ctx.Error(err) // Log the error
 		utils.SendError(ctx, http.StatusInternalServerError, err.Error(), err)
 		return
 	}
