@@ -3,6 +3,7 @@ package middleware
 import (
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -135,8 +136,10 @@ func (m *SecureAuthMiddleware) PermissionRequired(permission string) gin.Handler
 		// Check permission server-side for non-admin users
 		hasPermission, err := m.authService.CheckPermission(c.Request.Context(), userID, permission)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-				"error": "Permission check failed",
+			// Permission check error usually means cache expired - require re-login
+			log.Printf("[PERMISSION ERROR] Failed to check permission '%s' for user %s: %v", permission, userID, err)
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"error": "Session expired, please login again",
 			})
 			return
 		}
