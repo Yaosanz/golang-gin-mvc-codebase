@@ -32,17 +32,17 @@ type User struct {
 	RoleID    uuid.UUID 		`gorm:"type:uuid" json:"-"`
 
 	// Multi-role relationships
-	UserRoles []UserRole     `gorm:"foreignKey:UserID" json:"user_roles,omitempty"`
+	UserRoles []UserRole     `gorm:"foreignKey:UserID" json:"-"`
 	Roles     []Role         `gorm:"many2many:user_roles;joinForeignKey:UserID;joinReferences:RoleID" json:"roles,omitempty"`
 }
 
 // UserRole represents the many-to-many relationship between users and roles
 type UserRole struct {
-	ID     uuid.UUID `gorm:"type:uuid;primaryKey"`
-	UserID uuid.UUID `gorm:"type:uuid;not null;index"`
-	RoleID uuid.UUID `gorm:"type:uuid;not null;index"`
-	User   User      `gorm:"foreignKey:UserID"`
-	Role   Role      `gorm:"foreignKey:RoleID"`
+	ID     uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
+	UserID uuid.UUID `gorm:"type:uuid;not null;index" json:"user_id"`
+	RoleID uuid.UUID `gorm:"type:uuid;not null;index" json:"role_id"`
+	User   User      `gorm:"foreignKey:UserID" json:"-"`
+	Role   Role      `gorm:"foreignKey:RoleID" json:"-"`
 }
 
 // Hook BeforeCreate → generate UUID otomatis sebelum insert

@@ -43,6 +43,7 @@ func (c *UserController) FindAll(ctx *gin.Context) {
 
 	data, total, err := c.app.GetService().GetUserService().FindAll(ctx, params)
 	if err != nil {
+		ctx.Error(err) // Log the error
 		utils.SendError(ctx, http.StatusNotFound, err.Error(), err)
 		return
 	}

@@ -8,15 +8,15 @@ import (
 )
 
 type Role struct {
-	ID        uuid.UUID      `gorm:"type:uuid;primaryKey"`
-	CreatedAt time.Time      `gorm:"autoCreateTime"`
-	UpdatedAt time.Time      `gorm:"autoUpdateTime"`
-	DeletedAt gorm.DeletedAt `gorm:"index"`
-	Name      string         `gorm:"uniqueIndex;not null"`
+	ID        uuid.UUID      `gorm:"type:uuid;primaryKey" json:"id"`
+	CreatedAt time.Time      `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+	Name      string         `gorm:"uniqueIndex;not null" json:"name"`
 
 	// Relationships
-	RolePermissions []RolePermission `gorm:"foreignKey:RoleID" json:"role_permissions,omitempty"`
-	Permissions     []Permission     `gorm:"many2many:role_permissions;" json:"permissions,omitempty"`
+	RolePermissions []RolePermission `gorm:"foreignKey:RoleID" json:"-"`
+	Permissions     []Permission     `gorm:"many2many:role_permissions;" json:"-"`
 }
 
 func (r *Role) BeforeCreate(tx *gorm.DB) (err error) {
