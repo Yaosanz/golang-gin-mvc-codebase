@@ -33,22 +33,35 @@ const ShortenLinkCreate: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateUrl(url)) {
+
+    const trimmedUrl = url.trim();
+    if (!trimmedUrl) {
+      setSnackbar({
+        open: true,
+        message: 'Please enter a URL',
+        severity: 'error',
+      });
+      return;
+    }
+
+    if (!validateUrl(trimmedUrl)) {
       return;
     }
 
     try {
       setIsLoading(true);
-      // Backend expects 'original_url', but we have 'url' from form
-      const result = await create({ original_url: url });
+      // Backend expects 'url' per Postman collection
+      const result = await create({ url: trimmedUrl });
       setCreatedLink(result);
       setRecentLinks([result, ...recentLinks].slice(0, 5));
       setSnackbar({ open: true, message: 'Link shortened successfully! 🎉', severity: 'success' });
       setUrl('');
     } catch (err: any) {
+      const errorMsg = err.response?.data?.message || err.response?.data?.error || err.message || 'Failed to shorten link';
+      console.error('Create link error:', err.response?.data);
       setSnackbar({
         open: true,
-        message: err.response?.data?.message || 'Failed to shorten link',
+        message: errorMsg,
         severity: 'error',
       });
     } finally {

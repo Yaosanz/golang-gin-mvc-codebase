@@ -13,6 +13,7 @@ interface DashboardStats {
   recentLinks: any[];
   isLoading: boolean;
   error: string | null;
+  isNetworkError?: boolean;
 }
 
 export default function Dashboard() {
@@ -24,6 +25,7 @@ export default function Dashboard() {
     recentLinks: [],
     isLoading: true,
     error: null,
+    isNetworkError: false,
   });
 
   const fetchStats = useCallback(async () => {
@@ -58,11 +60,13 @@ export default function Dashboard() {
       }));
     } catch (err: any) {
       const apiMsg = err?.response?.data?.message;
+      const isNetworkError = !err?.response;
       console.error('Failed to fetch stats:', err?.message, 'backend:', apiMsg);
       setStats((prev) => ({
         ...prev,
         isLoading: false,
-        error: apiMsg || err?.message || 'Failed to load data',
+        error: isNetworkError ? 'Network error' : apiMsg || err?.message || 'Failed to load data',
+        isNetworkError,
       }));
     }
   }, [user?.roles]);
@@ -220,7 +224,8 @@ export default function Dashboard() {
 
           {stats.error && (
             <Alert severity="error" sx={{ mb: 2 }}>
-              {stats.error}. Backend might not be running on http://localhost:8080
+              {stats.error}
+              {stats.isNetworkError ? '. Backend might not be running on http://localhost:8080' : ''}
             </Alert>
           )}
 

@@ -96,9 +96,15 @@ export const getById = async (id: string): Promise<UserResponse> => {
   return response.data.data || response.data;
 };
 
+// Update user profile - Task 4: Database Transactions (menggunakan user_id dari JWT token)
+export const updateProfile = async (data: UpdateUserRequest): Promise<UserResponse> => {
+  const response = await api.put<UserDetailResponse>('/users', data);
+  return response.data.data || response.data;
+};
+
 // Update user (Admin only) - Task 4: Database Transactions
 export const update = async (id: string, data: UpdateUserRequest): Promise<UserResponse> => {
-  const response = await api.patch<UserDetailResponse>(`/users/${id}`, data);
+  const response = await api.patch<UserDetailResponse>(`/v1/users/${id}`, data);
   return response.data.data || response.data;
 };
 

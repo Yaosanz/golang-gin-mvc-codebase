@@ -80,19 +80,40 @@ const UserList: React.FC = () => {
   };
 
   const handleCreateSubmit = async () => {
+    // Validate required fields
+    if (!createForm.name?.trim() || !createForm.username?.trim() || !createForm.email?.trim() || !createForm.password?.trim()) {
+      setSnackbar({
+        open: true,
+        message: 'Please fill in all required fields',
+        severity: 'error',
+      });
+      return;
+    }
+
     try {
       setIsSaving(true);
-      await create({
-        ...createForm,
-        role_id: undefined,
-      });
+      // Only send defined fields to avoid backend validation errors
+      const payload: any = {
+        name: createForm.name.trim(),
+        username: createForm.username.trim(),
+        email: createForm.email.trim(),
+        password: createForm.password,
+      };
+
+      // Only include phone if it has a value
+      if (createForm.phone?.trim()) {
+        payload.phone = createForm.phone.trim();
+      }
+
+      await create(payload);
       setSnackbar({ open: true, message: 'User created successfully', severity: 'success' });
       setCreateDialog(false);
       await fetchUsers();
     } catch (err: any) {
+      const errorMsg = err.response?.data?.message || err.response?.data?.error || err.message || 'Failed to create user';
       setSnackbar({
         open: true,
-        message: err.response?.data?.message || 'Failed to create user',
+        message: errorMsg,
         severity: 'error',
       });
     } finally {

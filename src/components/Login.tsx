@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Avatar, Button, CssBaseline, TextField, FormControlLabel, Checkbox, Link, Box, Typography, Container, Snackbar, Alert, Paper, InputAdornment, IconButton, Card, CardContent, Divider, Stack } from '@mui/material';
 import { LockOutlined as LockOutlinedIcon, Visibility as VisibilityIcon, VisibilityOff as VisibilityOffIcon, Email as EmailIcon } from '@mui/icons-material';
 import { useNavigate, Navigate } from 'react-router-dom';
-import { login as apiLogin } from '../api/auth.ts';
+import { login as apiLogin, getProfile } from '../api/auth.ts';
 import { useAuth } from '../context/AuthContext.tsx';
 
 export default function Login() {
@@ -29,6 +29,9 @@ export default function Login() {
     e.preventDefault();
     setIsLoading(true);
 
+    // Mark recent login timestamp to prevent transient 401 redirects
+    localStorage.setItem('recent_login_ts', String(Date.now()));
+
     try {
       const res = await apiLogin({ username, password });
       console.log('Login response full:', res);
@@ -44,6 +47,14 @@ export default function Login() {
 
       login(token);
       console.log('Token saved to context:', token);
+
+      // Prime permission cache by fetching profile before navigation
+      try {
+        const profile = await getProfile();
+        console.log('Profile fetched to warm permissions:', profile?.data?.username);
+      } catch (warmErr) {
+        console.warn('Profile warm-up failed, proceeding anyway:', warmErr);
+      }
 
       if (rememberMe) {
         localStorage.setItem('rememberMe', 'true');
@@ -258,10 +269,10 @@ export default function Login() {
               </Typography>
               <Stack spacing={0.5}>
                 <Typography variant="caption">
-                  <strong>User:</strong> demo / demo123
+                  <strong>User:</strong> user / secret123
                 </Typography>
                 <Typography variant="caption">
-                  <strong>Admin:</strong> admin / admin123
+                  <strong>Admin:</strong> admin / secret123
                 </Typography>
               </Stack>
             </CardContent>

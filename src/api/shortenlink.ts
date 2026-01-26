@@ -1,13 +1,12 @@
 import api from './config.ts';
+import { getProfile } from './auth.ts';
 
 export interface CreateShortenLinkRequest {
-  original_url?: string; // Backend expects 'original_url'
-  url?: string; // Frontend may pass 'url', transform it
+  url: string; // Backend expects 'url' field per Postman collection
 }
 
 export interface UpdateShortenLinkRequest {
-  original_url?: string; // Backend expects 'original_url'
-  url?: string; // Frontend may pass 'url', transform it
+  url?: string; // Backend expects 'url' field per Postman collection
 }
 
 export interface ShortenLinkResponse {
@@ -56,20 +55,48 @@ const transformLink = (link: any): ShortenLinkResponse => ({
 // Get all shortened links for current user - Task 5: Redis Caching
 // Backend list route is registered with trailing slash
 export const getAll = async (): Promise<ShortenLinkResponse[]> => {
-  const response = await api.get<ShortenLinksListResponse>('/shorten-links/');
-  const data = response.data.data;
+  try {
+    const response = await api.get<ShortenLinksListResponse>('/shorten-links/');
+    const data = response.data.data;
 
-  // Handle both array response and paginated response
-  if (Array.isArray(data)) {
-    return data.map(transformLink);
-  } else {
-    return (data?.contents || []).map(transformLink);
+    // Handle both array response and paginated response
+    if (Array.isArray(data)) {
+      return data.map(transformLink);
+    } else {
+      return (data?.contents || []).map(transformLink);
+    }
+  } catch (err: any) {
+    // If permissions cache not warmed, fetch profile then retry once
+    const msg: string | undefined = err?.response?.data?.message || err?.response?.data?.error;
+    const status = err?.response?.status;
+    if (status === 401 && msg && msg.toLowerCase().includes('permissions not cached')) {
+      try {
+        await getProfile();
+        const retry = await api.get<ShortenLinksListResponse>('/shorten-links/');
+        const data = retry.data.data;
+        if (Array.isArray(data)) {
+          return data.map(transformLink);
+        }
+        return (data?.contents || []).map(transformLink);
+      } catch (retryErr) {
+        throw retryErr;
+      }
+    }
+    throw err;
   }
 };
 
 // Create shortened link - Task 4: Database Transactions & Task 5: Cache Invalidation
 export const create = async (data: CreateShortenLinkRequest): Promise<ShortenLinkResponse> => {
-  const response = await api.post<ShortenLinkDetailResponse>('/shorten-links', data);
+  if (!data.url || !data.url.trim()) {
+    throw new Error('URL is required');
+  }
+
+  const payload = {
+    url: data.url.trim(),
+  };
+
+  const response = await api.post<ShortenLinkDetailResponse>('/v1/shortenlinks', payload);
   return transformLink(response.data.data);
 };
 
@@ -80,8 +107,8 @@ export const getById = async (id: string): Promise<ShortenLinkResponse> => {
 };
 
 // Update shortened link - Task 4: Database Transactions & Task 5: Cache Invalidation
-export const update = async (id: string, data: UpdateShortenLinkRequest): Promise<ShortenLinkResponse> => {
-  const response = await api.patch<ShortenLinkDetailResponse>(`/shorten-links/${id}`, data);
+export const update = async (code: string, data: UpdateShortenLinkRequest): Promise<ShortenLinkResponse> => {
+  const response = await api.put<ShortenLinkDetailResponse>(`/v1/shortenlinks/${code}`, data);
   return transformLink(response.data.data);
 };
 
@@ -93,7 +120,7 @@ export const remove = async (id: string): Promise<void> => {
 // Get shortened link by code (public redirect) - Task 5: Redis Caching (high-performance, 48-hour TTL)
 export const getByCode = async (code: string): Promise<string> => {
   try {
-    const response = await api.get(`/shortenlinks/${code}`);
+    const response = await api.get(`/../shortenlinks/${code}`);
     return response.data.data?.url || response.data.url;
   } catch (error) {
     throw error;
