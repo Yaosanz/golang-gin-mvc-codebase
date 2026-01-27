@@ -3,6 +3,7 @@ package v1
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	"go-starter-app/app/http/dto"
 	"go-starter-app/app/http/utils"
@@ -32,7 +33,7 @@ func (ctl *AuthController) Login(c *gin.Context) {
 		return
 	}
 
-	token, loginCtx, err := ctl.app.GetService().
+	accessToken, refreshToken, loginCtx, err := ctl.app.GetService().
 		GetAuthService().
 		SecureLogin(c.Request.Context(), req.Username, req.Password)
 
@@ -53,8 +54,9 @@ func (ctl *AuthController) Login(c *gin.Context) {
 	}
 
 	data := gin.H{
-		"token":      token,
-		"token_type": "Bearer",
+		"token":          accessToken,
+		"refresh_token":  refreshToken,
+		"token_type":     "Bearer",
 		"user": gin.H{
 			"id":       loginData.UserID.String(),
 			"username": loginData.Username,
@@ -64,6 +66,124 @@ func (ctl *AuthController) Login(c *gin.Context) {
 	}
 
 	utils.SendOne(c, data, "Login success", nil)
+}
+
+// POST /api/auth/refresh
+func (ctl *AuthController) Refresh(c *gin.Context) {
+	// Accept refresh token via Authorization: Bearer <token>, or fallback to JSON body
+	var refreshTokenInput string
+
+	// 1) Try Authorization header first
+	authHeader := c.GetHeader("Authorization")
+	if authHeader == "" {
+		authHeader = c.Request.Header.Get("Authorization")
+	}
+	if authHeader != "" {
+		parts := strings.Fields(authHeader)
+		if len(parts) == 2 && strings.EqualFold(parts[0], "Bearer") {
+			refreshTokenInput = strings.TrimSpace(parts[1])
+		}
+	}
+
+	// 1a) Try alternative headers commonly used when proxies strip Authorization
+	if refreshTokenInput == "" {
+		altHeaders := []string{"X-Refresh-Token", "Refresh-Token", "X-Authorization"}
+		for _, h := range altHeaders {
+			val := strings.TrimSpace(c.GetHeader(h))
+			if val == "" {
+				val = strings.TrimSpace(c.Request.Header.Get(h))
+			}
+			if val != "" {
+				// If header looks like "Bearer <token>", parse it; otherwise assume it's the token
+				parts := strings.Fields(val)
+				if len(parts) == 2 && strings.EqualFold(parts[0], "Bearer") {
+					refreshTokenInput = strings.TrimSpace(parts[1])
+				} else {
+					refreshTokenInput = val
+				}
+				break
+			}
+		}
+	}
+
+	// 1a-extended) Iterate all headers to find any value containing "Bearer"
+	if refreshTokenInput == "" {
+		for name, vals := range c.Request.Header {
+			// Check common mis-cased variants of Authorization
+			if strings.EqualFold(name, "Authorization") && len(vals) > 0 {
+				parts := strings.Fields(vals[0])
+				if len(parts) == 2 && strings.EqualFold(parts[0], "Bearer") {
+					refreshTokenInput = strings.TrimSpace(parts[1])
+					break
+				}
+			}
+			// Fallback: search any header value for Bearer scheme
+			for _, v := range vals {
+				if strings.HasPrefix(strings.TrimSpace(v), "Bearer ") {
+					refreshTokenInput = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(v), "Bearer "))
+					break
+				}
+			}
+			if refreshTokenInput != "" {
+				break
+			}
+		}
+	}
+
+	// 1b) Try query params as a last header-less option
+	if refreshTokenInput == "" {
+		qp := strings.TrimSpace(c.Query("refresh_token"))
+		if qp == "" {
+			qp = strings.TrimSpace(c.Query("token"))
+		}
+		if qp != "" {
+			refreshTokenInput = qp
+		}
+	}
+
+	// 2) Fallback to JSON body only if Content-Type indicates JSON
+	if refreshTokenInput == "" {
+		ct := strings.ToLower(strings.TrimSpace(c.GetHeader("Content-Type")))
+		if strings.Contains(ct, "application/json") {
+			var req dto.RefreshTokenDTO
+			if err := c.ShouldBindJSON(&req); err == nil {
+				refreshTokenInput = req.RefreshToken
+			}
+		}
+	}
+
+	if refreshTokenInput == "" {
+		utils.SendError(c, http.StatusBadRequest, "Refresh token required", nil)
+		return
+	}
+
+	accessToken, refreshToken, loginCtx, err := ctl.app.GetService().
+		GetAuthService().
+		Refresh(c.Request.Context(), refreshTokenInput)
+
+	if err != nil {
+		utils.SendError(c, http.StatusUnauthorized, "Invalid or expired refresh token", nil)
+		return
+	}
+
+	loginData, _ := loginCtx.(*services.LoginContext)
+	if loginData == nil {
+		utils.SendError(c, http.StatusInternalServerError, "Login context missing", nil)
+		return
+	}
+
+	data := gin.H{
+		"token":          accessToken,
+		"refresh_token":  refreshToken,
+		"token_type":     "Bearer",
+		"user": gin.H{
+			"id":       loginData.UserID.String(),
+			"username": loginData.Username,
+			"roles":    loginData.Roles,
+		},
+	}
+
+	utils.SendOne(c, data, "Token refresh success", nil)
 }
 
 // POST /api/auth/register

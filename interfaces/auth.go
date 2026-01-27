@@ -10,7 +10,8 @@ import (
 // IAuthService defines the authentication service interface
 type IAuthService interface {
 	// Authentication methods
-	SecureLogin(ctx context.Context, username, password string) (string, interface{}, error)
+	SecureLogin(ctx context.Context, username, password string) (string, string, interface{}, error)
+	Refresh(ctx context.Context, refreshToken string) (string, string, interface{}, error)
 	Register(ctx context.Context, dto *dto.RegisterDTO) error
 
 	// Authorization methods

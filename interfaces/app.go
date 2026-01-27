@@ -12,6 +12,7 @@ import (
 	"go-starter-app/pkg/scheduler"
 
 	"github.com/minio/minio-go/v7"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
@@ -61,4 +62,5 @@ type IAppDependencies interface {
 	GetScheduler() *scheduler.Scheduler
 	GetMinio() *minio.Client
 	GetFcm() *google.FCM
+	GetRedis() *redis.Client
 }
