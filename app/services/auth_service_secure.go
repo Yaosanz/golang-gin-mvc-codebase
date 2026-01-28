@@ -399,9 +399,55 @@ func (s *SecureAuthService) GetUserRoles(ctx context.Context, userID uuid.UUID) 
 	return s.authzService.GetUserRoles(ctx, userID)
 }
 
-// IsUserActive checks if user account is active
+// GetUserPermissionsFromDB loads permissions from database and repopulates cache
+func (s *SecureAuthService) GetUserPermissionsFromDB(ctx context.Context, userID uuid.UUID) ([]string, error) {
+	permissions, err := s.getUserPermissions(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Repopulate cache
+	s.authzService.CacheUserPermissions(ctx, userID, permissions)
+
+	// Also cache roles while we're at it
+	user, err := s.getUserWithRoles(ctx, userID)
+	if err == nil {
+		roles := make([]string, len(user.Roles))
+		for i, role := range user.Roles {
+			roles[i] = role.Name
+		}
+		s.authzService.CacheUserRoles(ctx, userID, roles)
+	}
+
+	return permissions, nil
+}
+
+// IsUserActive checks if user account is active with database fallback
 func (s *SecureAuthService) IsUserActive(ctx context.Context, userID uuid.UUID) (bool, error) {
-	return s.authzService.IsUserActive(ctx, userID)
+	// Try cache first
+	isActive, err := s.authzService.IsUserActive(ctx, userID)
+	if err == nil {
+		return isActive, nil
+	}
+
+	// Cache miss - fallback to database
+	user, err := s.userRepo.FindById(ctx, userID.String())
+	if err != nil {
+		return false, err
+	}
+
+	// Repopulate cache for future checks
+	userCacheData := &models.UserCacheData{
+		ID:       user.ID.String(),
+		Name:     user.Name,
+		Username: user.Username,
+		Email:    user.Email,
+		IsActive: user.IsActive,
+	}
+	cacheKey := helpers.UserCacheKey(user.ID.String())
+	s.cache.Set(ctx, cacheKey, userCacheData, 30*time.Minute)
+
+	return user.IsActive, nil
 }
 
 // Middleware Helpers for Secure Authorization

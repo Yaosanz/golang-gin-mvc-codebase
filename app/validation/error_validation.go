@@ -186,14 +186,14 @@ func getFieldTag(structField reflect.StructField, tagName string, fallback strin
 func getErrorMessage(fieldErr validator.FieldError, title string, lang string) string {
 	messages := map[string]map[string]string{
 		"en": {
-			"required":              fmt.Sprintf("is required"),
-			"required_if":           fmt.Sprintf("is required"),
-			"required_top_field_if": fmt.Sprintf("is required"),
-			"required_if_not_empty": fmt.Sprintf("is required"),
-			"email":                 fmt.Sprintf("must be a valid email"),
-			"gte":                   fmt.Sprintf("must be greater than or equal to the required value"),
+			"required":              "is required",
+			"required_if":           "is required",
+			"required_top_field_if": "is required",
+			"required_if_not_empty": "is required",
+			"email":                 "must be a valid email",
+			"gte":                   "must be greater than or equal to the required value",
 			"len":                   fmt.Sprintf("must be of length %s", fieldErr.Param()),
-			"datetime":              fmt.Sprintf("not valid"),
+			"datetime":              "not valid",
 		},
 		"id": { // Indonesian translations
 			"required":              strings.TrimSpace(fmt.Sprintf("%s harus diisi", title)),
@@ -226,4 +226,63 @@ func getErrorMessage(fieldErr validator.FieldError, title string, lang string) s
 	}
 
 	return message
+}
+
+// ParseBindingErrors processes Gin binding errors and returns structured error
+func ParseBindingErrors(err error) interface{} {
+	var validationErrors validator.ValidationErrors
+	if errors.As(err, &validationErrors) {
+		format := make([]ErrorFormat, 0)
+
+		for _, fieldErr := range validationErrors {
+			// Get JSON field name by looking at the binding tag
+			// StructField() gives us the actual struct field name
+			structFieldName := fieldErr.StructField()
+			
+			// Map common field names to their JSON equivalents
+			fieldName := structFieldName
+			jsonTagMap := map[string]string{
+				"OriginalURL": "url",
+				"CustomCode":  "custom_code",
+			}
+			
+			if jsonName, exists := jsonTagMap[structFieldName]; exists {
+				fieldName = jsonName
+			} else {
+				// Convert PascalCase to camelCase for unmapped fields
+				if len(structFieldName) > 0 {
+					fieldName = strings.ToLower(string(structFieldName[0])) + structFieldName[1:]
+				}
+			}
+			
+			// Build error message based on tag
+			var message string
+			switch fieldErr.Tag() {
+			case "required":
+				message = fmt.Sprintf("%s is required", fieldName)
+			case "url":
+				message = fmt.Sprintf("%s must be a valid URL", fieldName)
+			case "alphanum":
+				message = fmt.Sprintf("%s must contain only alphanumeric characters", fieldName)
+			case "email":
+				message = fmt.Sprintf("%s must be a valid email address", fieldName)
+			case "min":
+				message = fmt.Sprintf("%s must be at least %s characters", fieldName, fieldErr.Param())
+			case "max":
+				message = fmt.Sprintf("%s must be at most %s characters", fieldName, fieldErr.Param())
+			default:
+				message = fmt.Sprintf("%s failed validation on '%s'", fieldName, fieldErr.Tag())
+			}
+
+			format = append(format, ErrorFormat{
+				Tag:     fieldErr.Tag(),
+				Field:   fieldName,
+				Message: message,
+			})
+		}
+
+		return &Error{Errors: format}
+	}
+
+	return nil
 }

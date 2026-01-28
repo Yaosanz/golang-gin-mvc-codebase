@@ -192,13 +192,15 @@ func (as *AuthorizationService) GetUserRoles(ctx context.Context, userID uuid.UU
 }
 
 // IsUserActive checks if user account is active (server-side only)
+// Returns cache miss error that should be handled by caller with DB fallback
 func (as *AuthorizationService) IsUserActive(ctx context.Context, userID uuid.UUID) (bool, error) {
 	cacheKey := UserCacheKey(userID.String())
 
 	var user models.UserCacheData
 	err := as.cache.Get(ctx, cacheKey, &user)
 	if err != nil {
-		return false, errors.New("unable to verify user status")
+		// Return error so caller can fallback to database
+		return false, err
 	}
 
 	return user.IsActive, nil

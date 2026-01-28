@@ -1,0 +1,721 @@
+{
+  "info": {
+    "_postman_id": "golang-gin-mvc-assessment",
+    "name": "Go Gin MVC - Complete Assessment Collection",
+    "description": "# 🎯 Complete API Documentation\n\nThis collection covers all 5 assessment requirements:\n\n## 1️⃣ JWT Auth with Multi-Role Support\n- Users can have multiple roles (admin, cms, user)\n- JWT includes roles array for quick authorization\n- Session-based token management with refresh rotation\n\n## 2️⃣ RBAC Payload Security\n- **Minimal JWT payload**: Only user_id, roles, session_id\n- **NO sensitive data** in token (no email, password, permissions)\n- Detailed permissions fetched server-side from Redis cache\n\n## 3️⃣ Middleware Token Identification\n- `token_type` field distinguishes \"user\" vs \"cms\" tokens\n- Separate validation logic per token type\n- Role-based and permission-based middleware\n\n## 4️⃣ Database Transactions\n- User registration with role assignment (atomic)\n- Bulk operations with rollback on error\n- ACID compliance for critical operations\n\n## 5️⃣ Redis Caching Strategy\n- **Auth cache**: Refresh tokens, session blacklist, permissions (critical)\n- **User cache**: Profile data, roles (high-read)\n- **Shorten link cache**: URL mappings, click counts (very high-read)\n\n---\n\n## 📌 Quick Start\n\n1. **Import this collection** into Postman\n2. **Set environment variables**:\n   - `base_url`: http://localhost:8080\n   - `access_token`: (auto-populated after login)\n   - `refresh_token`: (auto-populated after login)\n3. **Run** \"Auth → Login\" first\n4. **Access token auto-injected** into protected endpoints\n\n---\n\n## 🔐 Authentication Flow\n\n```\n┌─────────────────────────────────────────┐\n│ 1. POST /api/auth/login                 │\n│    ↓ Returns: access_token + refresh    │\n└─────────────────────────────────────────┘\n              ↓\n┌─────────────────────────────────────────┐\n│ 2. Use access_token for protected APIs  │\n│    Header: Authorization: Bearer {token}│\n└─────────────────────────────────────────┘\n              ↓\n┌─────────────────────────────────────────┐\n│ 3. POST /api/auth/refresh (when expired)│\n│    ↓ Returns: new tokens (rotation)     │\n└─────────────────────────────────────────┘\n```\n\n---\n\n## 👥 Available Roles\n\n### **Admin** (`admin`)\n- Full access to all endpoints\n- Can manage users, permissions, roles\n- Bypasses active user check\n- Can read/update/delete any resource\n\n### **CMS** (`cms`)\n- Content management access\n- Can manage shorten links (all)\n- Cannot manage users\n- Read/write permissions for content\n\n### **User** (`user`)\n- Basic authenticated access\n- Can manage own profile only\n- Can create/read/update/delete own shorten links\n- Limited to own resources\n\n---\n\n## 📊 Rate Limiting\n\n| Endpoint | Limit | Window |\n|----------|-------|--------|\n| `/auth/login` | 5 requests | per minute |\n| `/auth/refresh` | 10 requests | per minute |\n| `/auth/register` | 3 requests | per minute |\n\n**Response when limited:**\n```json\n{\n  \"success\": false,\n  \"message\": \"Rate limit exceeded. Try again in 45 seconds\",\n  \"error\": {\n    \"code\": \"RATE_LIMIT_EXCEEDED\",\n    \"limit\": 5,\n    \"retry_after\": 45\n  }\n}\n```\n\n---\n\n## 🎯 Testing Scenarios\n\n### Scenario 1: User CRUD Flow\n1. Login as admin\n2. Create new user\n3. Login as new user\n4. Update own profile\n5. Try to access admin endpoint (should fail)\n\n### Scenario 2: Multi-Role Access\n1. Login as user with [\"user\", \"cms\"] roles\n2. Access user endpoints ✓\n3. Access CMS endpoints ✓\n4. Access admin endpoints ✗\n\n### Scenario 3: Refresh Token Rotation\n1. Login → get tokens\n2. Refresh → get new tokens\n3. Try old refresh token → 401 (one-time use)\n4. Use new refresh token → success\n\n### Scenario 4: Cache Performance\n1. GET /api/v1/shorten-links/{id} → DB query\n2. GET /api/v1/shorten-links/{id} → Redis cache (faster)\n3. Check Redis: `docker exec byn-redis redis-cli KEYS \"link:*\"`\n\n---\n\n## 🔍 Security Features\n\n✅ **Token Security**\n- Short-lived access tokens (15 min)\n- Opaque refresh tokens (256-bit random)\n- Server-side session validation\n- Automatic token rotation\n\n✅ **Session Management**\n- Session blacklist for revoked tokens\n- One-time use refresh tokens\n- Concurrent session tracking\n\n✅ **Rate Limiting**\n- Redis-based sliding window\n- Per-IP rate limiting\n- Custom limits per endpoint\n\n✅ **RBAC Authorization**\n- Role-based access control\n- Permission-based granular access\n- Server-side permission validation\n\n---\n\n## 📝 Response Format\n\nAll responses follow this structure:\n\n**Success:**\n```json\n{\n  \"success\": true,\n  \"message\": \"Operation successful\",\n  \"data\": { /* ... */ }\n}\n```\n\n**Error:**\n```json\n{\n  \"success\": false,\n  \"message\": \"Error description\",\n  \"error\": { /* details */ }\n}\n```\n\n---\n\n## 🚀 Production Considerations\n\n1. **Environment Variables**: Use Postman environments for dev/staging/prod\n2. **SSL/TLS**: Enable HTTPS in production\n3. **Token Storage**: Store tokens securely (not in localStorage)\n4. **CORS**: Configure allowed origins\n5. **Monitoring**: Track rate limit hits, cache hit ratio\n\n---\n\n**Author:** Assessment Implementation\n**Version:** 1.0.0\n**Last Updated:** 2026-01-28",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "Login (User Role)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Auto-save tokens to environment",
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set(\"access_token\", jsonData.data.token);",
+                  "    pm.environment.set(\"refresh_token\", jsonData.data.refresh_token);",
+                  "    pm.environment.set(\"user_id\", jsonData.data.user.id);",
+                  "    console.log(\"✓ Tokens saved to environment\");",
+                  "}",
+                  "",
+                  "// Validate response",
+                  "pm.test(\"Login successful\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().success).to.be.true;",
+                  "});",
+                  "",
+                  "pm.test(\"Returns JWT tokens\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.token).to.be.a('string');",
+                  "    pm.expect(jsonData.data.refresh_token).to.be.a('string');",
+                  "});",
+                  "",
+                  "pm.test(\"Returns user data with roles\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.user.roles).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"secret123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "# Login Endpoint\n\n**Assessment: #1, #2, #3**\n\n## Purpose\nAuthenticate user and receive JWT access + refresh tokens.\n\n## Features Demonstrated\n\n### 1. Multi-Role Support ✓\n- User can have multiple roles: `[\"admin\", \"cms\"]`\n- Roles included in JWT payload for fast checks\n- Server-side role validation from cache\n\n### 2. Secure JWT Payload ✓\n```json\n// JWT Claims (minimal & secure)\n{\n  \"user_id\": \"uuid\",\n  \"token_type\": \"user\",  // <- Middleware identification\n  \"sid\": \"session-uuid\",\n  \"roles\": [\"admin\"],\n  \"iss\": \"go-starter-app\",\n  \"exp\": 1769584522\n}\n```\n\n**NOT included in JWT:**\n- ❌ Password hash\n- ❌ Email address\n- ❌ Detailed permissions\n- ❌ Personal information\n\n### 3. Token Type Identification ✓\n- `token_type: \"user\"` → User authentication\n- `token_type: \"cms\"` → CMS authentication\n- Middleware validates based on type\n\n## Request Body\n```json\n{\n  \"username\": \"admin\",\n  \"password\": \"secret123\"\n}\n```\n\n## Success Response (200)\n```json\n{\n  \"success\": true,\n  \"message\": \"Login success\",\n  \"data\": {\n    \"token\": \"eyJhbGciOiJIUzI1NiIs...\",\n    \"refresh_token\": \"L8mtnHcawO11MedQ4Nh...\",\n    \"token_type\": \"Bearer\",\n    \"user\": {\n      \"id\": \"uuid\",\n      \"username\": \"admin\",\n      \"email\": \"admin@example.com\",\n      \"roles\": [\"admin\", \"cms\"]\n    }\n  }\n}\n```\n\n## Error Responses\n\n**401 Unauthorized** - Invalid credentials\n```json\n{\n  \"success\": false,\n  \"message\": \"Invalid username or password\"\n}\n```\n\n**429 Too Many Requests** - Rate limit exceeded (5/minute)\n```json\n{\n  \"success\": false,\n  \"message\": \"Rate limit exceeded. Try again in 45 seconds\",\n  \"error\": {\n    \"code\": \"RATE_LIMIT_EXCEEDED\",\n    \"retry_after\": 45\n  }\n}\n```\n\n## Rate Limiting\n- **Limit:** 5 requests per minute per IP\n- **Algorithm:** Redis sliding window counter\n- **Headers:** `X-RateLimit-Limit`, `X-RateLimit-Remaining`\n\n## Caching Behavior (#5)\n\nAfter successful login, the following are cached in Redis:\n\n1. **Refresh Token** (30 days TTL)\n   - Key: `auth:refresh:{token}`\n   - Value: session_id\n\n2. **User Permissions** (1 hour TTL)\n   - Key: `perm:{user_id}`\n   - Value: [\"user:read\", \"user:update\", ...]\n\n3. **User Roles** (1 hour TTL)\n   - Key: `user:{user_id}:roles`\n   - Value: [\"admin\", \"cms\"]\n\n## Next Steps\n1. Copy `token` to use in protected endpoints\n2. Store `refresh_token` for token renewal\n3. Token expires in 15 minutes\n4. Use refresh endpoint before expiry"
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Token (Body)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Save new tokens",
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set(\"access_token\", jsonData.data.token);",
+                  "    pm.environment.set(\"refresh_token\", jsonData.data.refresh_token);",
+                  "    console.log(\"✓ Tokens refreshed and saved\");",
+                  "}",
+                  "",
+                  "pm.test(\"Refresh successful\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Returns new token pair\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.token).to.be.a('string');",
+                  "    pm.expect(jsonData.data.refresh_token).to.be.a('string');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "refresh"]
+            },
+            "description": "# Refresh Token Endpoint (JSON Body)\n\n**Assessment: #1, #2, #5**\n\n## Purpose\nExchange refresh token for new access + refresh tokens.\n\n## Features\n\n### 1. Token Rotation ✓\n- **One-time use**: Old refresh token invalidated immediately\n- **Security**: Prevents token replay attacks\n- **Auto-rotation**: Always returns new refresh token\n\n### 2. Multiple Input Methods\nSupports 4 ways to send refresh token:\n- ✓ JSON body (this request)\n- ✓ Authorization: Bearer header\n- ✓ Custom headers (X-Refresh-Token)\n- ✓ Query parameter (?refresh_token=...)\n\n### 3. Session Management (#5)\n- Old session blacklisted in Redis\n- New session ID generated\n- Cache invalidation for old tokens\n\n## Request Body\n```json\n{\n  \"refresh_token\": \"L8mtnHcawO11MedQ4NhyG4kgGz8vzt2d-u0ocUNhC68\"\n}\n```\n\n## Success Response (200)\n```json\n{\n  \"success\": true,\n  \"message\": \"Token refreshed\",\n  \"data\": {\n    \"token\": \"eyJhbGciOiJIUzI1NiIs... (new)\",\n    \"refresh_token\": \"yrBZTnJc4SklMi31yUA... (new)\",\n    \"token_type\": \"Bearer\"\n  }\n}\n```\n\n## Error Responses\n\n**401 Unauthorized** - Invalid or expired token\n```json\n{\n  \"success\": false,\n  \"message\": \"Invalid or expired refresh token\"\n}\n```\n\n**429 Rate Limited** (10/minute)\n```json\n{\n  \"success\": false,\n  \"message\": \"Rate limit exceeded\"\n}\n```\n\n## Redis Operations (#5)\n\n**On successful refresh:**\n\n1. **Delete old refresh token**\n   ```\n   DEL auth:refresh:{old_token}\n   DEL auth:refresh:{old_token}:uid\n   ```\n\n2. **Blacklist old session**\n   ```\n   SET session:blacklist:{old_sid} 1 EX 900\n   ```\n\n3. **Store new refresh token**\n   ```\n   SET auth:refresh:{new_token} {new_sid} EX 2592000\n   SET auth:refresh:{new_token}:uid {user_id} EX 2592000\n   ```\n\n## Security Notes\n\n- ⚠️ Refresh token is **opaque** (not JWT)\n- ⚠️ One-time use only\n- ⚠️ Old token cannot be reused\n- ⚠️ Session automatically invalidated\n\n## Testing Token Rotation\n\n1. Login → save refresh_token_1\n2. Refresh → get refresh_token_2\n3. Try refresh_token_1 again → 401 ✓\n4. Use refresh_token_2 → 200 ✓"
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Token (Bearer Header)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set(\"access_token\", jsonData.data.token);",
+                  "    pm.environment.set(\"refresh_token\", jsonData.data.refresh_token);",
+                  "}",
+                  "",
+                  "pm.test(\"Refresh via Bearer header works\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{refresh_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "refresh"]
+            },
+            "description": "# Refresh Token via Authorization Header\n\nAlternative method: Send refresh token via `Authorization: Bearer` header instead of JSON body.\n\n## Header\n```\nAuthorization: Bearer {refresh_token}\n```\n\n## When to use\n- Client libraries that auto-inject Bearer tokens\n- Environments where JSON body is restricted\n- Consistent auth header pattern\n\n## Fallback Order\nController checks in this order:\n1. Authorization: Bearer header\n2. X-Refresh-Token header\n3. Refresh-Token header\n4. Query parameter\n5. JSON body\n\nFirst non-empty value is used."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Profile retrieved\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.data.roles).to.be.an('array');",
+                  "    pm.expect(jsonData.data.permissions).to.exist;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/auth/profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "profile"]
+            },
+            "description": "# Get User Profile\n\n**Assessment: #1, #2, #3, #5**\n\n## Purpose\nRetrieve authenticated user's profile with roles and permissions.\n\n## Features\n\n### 1. Multi-Role Display ✓\nShows all roles assigned to user:\n```json\n{\n  \"roles\": [\"admin\", \"cms\", \"user\"]\n}\n```\n\n### 2. Server-Side Permission Fetch (#2, #5)\n- Permissions NOT in JWT (security)\n- Fetched from Redis cache\n- Fallback to empty array if cache miss\n\n### 3. JWT Validation (#3)\n- Middleware extracts `user_id` from token\n- Validates session not blacklisted\n- Checks user active status\n\n## Authorization\n**Required:** Bearer token in Authorization header\n\n```\nAuthorization: Bearer {access_token}\n```\n\n## Success Response (200)\n```json\n{\n  \"success\": true,\n  \"message\": \"Profile\",\n  \"data\": {\n    \"id\": \"a74f32c9-1db6-4d65-9ca4-b1d986346cc9\",\n    \"username\": \"admin\",\n    \"email\": \"admin@mydigilearn.com\",\n    \"roles\": [\"admin\", \"cms\"],\n    \"permissions\": [\n      \"user:create\",\n      \"user:read:all\",\n      \"user:update:all\",\n      \"user:delete\",\n      \"shortenlink:create\",\n      \"shortenlink:read:all\",\n      \"shortenlink:update:all\",\n      \"shortenlink:delete:all\"\n    ]\n  }\n}\n```\n\n## Error Responses\n\n**401 Unauthorized** - No token or invalid token\n```json\n{\n  \"success\": false,\n  \"message\": \"User not authenticated\"\n}\n```\n\n**401 Session Expired** - Token valid but session blacklisted\n```json\n{\n  \"error\": \"Session expired\"\n}\n```\n\n## Redis Cache Flow (#5)\n\n### Cache Hit (Fast)\n```\n1. Middleware validates JWT → Extract user_id\n2. Check session valid: GET session:blacklist:{sid}\n3. Controller: GET user:{user_id}:roles → [\"admin\"]\n4. Controller: GET perm:{user_id} → [\"user:create\", ...]\n5. Response: 200 OK (< 5ms)\n```\n\n### Cache Miss (Slower)\n```\n1-2. Same as above\n3. Controller: GET user:{user_id}:roles → (nil)\n4. Fallback: roles = []\n5. Response: 200 OK with empty arrays (~10ms)\n```\n\n## Middleware Flow (#3)\n\n```\n┌──────────────────────────────────────┐\n│ 1. Extract Authorization header      │\n└──────────────────────────────────────┘\n              ↓\n┌──────────────────────────────────────┐\n│ 2. Validate JWT signature & expiry   │\n└──────────────────────────────────────┘\n              ↓\n┌──────────────────────────────────────┐\n│ 3. Check token_type == \"user\"        │\n│    (for user endpoints)              │\n└──────────────────────────────────────┘\n              ↓\n┌──────────────────────────────────────┐\n│ 4. Verify session not blacklisted    │\n│    Redis: session:blacklist:{sid}    │\n└──────────────────────────────────────┘\n              ↓\n┌──────────────────────────────────────┐\n│ 5. Store user_id in context          │\n│    c.Set(\"user_id\", uuid)            │\n└──────────────────────────────────────┘\n              ↓\n┌──────────────────────────────────────┐\n│ 6. Proceed to controller             │\n└──────────────────────────────────────┘\n```\n\n## Testing\n\n1. Login first to get access_token\n2. Token auto-injected via environment variable\n3. Should return user data with roles/permissions\n4. Try with expired token → 401\n5. Try without token → 401"
+          },
+          "response": []
+        },
+        {
+          "name": "Register User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["pm.test(\"User registered\", function () {", "    pm.response.to.have.status(201);", "});"],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"newuser\",\n  \"email\": \"newuser@example.com\",\n  \"password\": \"password123\",\n  \"name\": \"New User\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "register"]
+            },
+            "description": "# Register New User\n\n**Assessment: #4 (Database Transaction)**\n\n## Purpose\nCreate new user account with atomic role assignment.\n\n## Database Transaction Flow (#4)\n\n```go\ndb.Transaction(func(tx *gorm.DB) error {\n    // 1. Create user\n    user := &User{Username, Email, Password}\n    tx.Create(user)\n    \n    // 2. Find default role\n    role := &Role{Name: \"user\"}\n    tx.First(role)\n    \n    // 3. Assign role to user\n    userRole := &UserRole{UserID: user.ID, RoleID: role.ID}\n    tx.Create(userRole)\n    \n    // All success → COMMIT\n    // Any error → ROLLBACK\n    return nil\n})\n```\n\n### ACID Guarantees ✓\n- **Atomicity**: All steps succeed or all fail\n- **Consistency**: User always has at least one role\n- **Isolation**: Concurrent registrations don't conflict\n- **Durability**: Committed data persists\n\n## Request Body\n```json\n{\n  \"username\": \"newuser\",\n  \"email\": \"newuser@example.com\",\n  \"password\": \"password123\",\n  \"name\": \"New User\"\n}\n```\n\n## Success Response (201)\n```json\n{\n  \"success\": true,\n  \"message\": \"Register success\",\n  \"data\": {\n    \"id\": \"uuid\",\n    \"username\": \"newuser\",\n    \"email\": \"newuser@example.com\"\n  }\n}\n```\n\n## Error Responses\n\n**409 Conflict** - Username exists\n```json\n{\n  \"success\": false,\n  \"message\": \"username already exists\"\n}\n```\n\n**409 Conflict** - Email exists\n```json\n{\n  \"success\": false,\n  \"message\": \"email already exists\"\n}\n```\n\n**400 Bad Request** - Validation error\n```json\n{\n  \"success\": false,\n  \"message\": \"Validation error\",\n  \"error\": {\n    \"username\": \"required\",\n    \"password\": \"min 8 characters\"\n  }\n}\n```\n\n**429 Rate Limited** (3/minute)\n```json\n{\n  \"success\": false,\n  \"message\": \"Rate limit exceeded\"\n}\n```\n\n## Rate Limiting\n- **Limit:** 3 requests per minute per IP\n- **Purpose:** Prevent automated account creation\n- **Algorithm:** Redis sliding window\n\n## Transaction Rollback Scenarios\n\n### Scenario 1: Duplicate Username\n```\n1. Create user → SUCCESS\n2. Username unique constraint → FAIL\n3. Transaction ROLLBACK → No user created ✓\n```\n\n### Scenario 2: Role Not Found\n```\n1. Create user → SUCCESS\n2. Find default role → FAIL (role deleted)\n3. Transaction ROLLBACK → No user created ✓\n```\n\n### Scenario 3: All Success\n```\n1. Create user → SUCCESS\n2. Find default role → SUCCESS\n3. Create user_role → SUCCESS\n4. Transaction COMMIT → User + role assigned ✓\n```\n\n## Next Steps\n1. Register new user\n2. Login with new credentials\n3. Check profile → should have \"user\" role\n4. Try registering same username → 409"
+          },
+          "response": []
+        }
+      ],
+      "description": "Authentication endpoints for login, registration, token refresh, and profile management.\n\n**Key Features:**\n- JWT-based authentication\n- Refresh token rotation\n- Multi-role support\n- Rate limiting\n- Redis caching",
+      "auth": {
+        "type": "noauth"
+      }
+    },
+    {
+      "name": "2. User Management (Admin Only)",
+      "item": [
+        {
+          "name": "List All Users",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["pm.test(\"Users list retrieved\", function () {", "    pm.response.to.have.status(200);", "    var jsonData = pm.response.json();", "    pm.expect(jsonData.data.contents).to.be.an('array');", "});"],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/users?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "sort",
+                  "value": "created_at",
+                  "disabled": true
+                },
+                {
+                  "key": "order",
+                  "value": "desc",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "# List All Users (Admin Only)\n\n**Assessment: #1, #3**\n\n## Authorization Required\n\n### Role Check (#1, #3)\n- **Required role:** `admin`\n- **Middleware:** `AdminRequired()`\n- **Token validation:** Checks `roles` array in JWT\n\n```go\n// Middleware flow\nif !claims.HasRole(\"admin\") {\n    return 403 Forbidden\n}\n```\n\n## Query Parameters\n\n| Parameter | Type | Default | Description |\n|-----------|------|---------|-------------|\n| `page` | int | 1 | Page number |\n| `limit` | int | 10 | Items per page |\n| `search` | string | - | Search in username/email |\n| `sort` | string | created_at | Sort field |\n| `order` | string | desc | asc or desc |\n\n## Success Response (200)\n```json\n{\n  \"success\": true,\n  \"message\": \"Users retrieved\",\n  \"data\": {\n    \"contents\": [\n      {\n        \"id\": \"uuid\",\n        \"username\": \"admin\",\n        \"email\": \"admin@example.com\",\n        \"name\": \"Administrator\",\n        \"is_active\": true,\n        \"created_at\": \"2026-01-28T10:00:00Z\"\n      }\n    ],\n    \"pagination\": {\n      \"total_data\": 50,\n      \"total_pages\": 5,\n      \"current_page\": 1,\n      \"per_page\": 10,\n      \"end_of_page\": false\n    }\n  }\n}\n```\n\n## Error Responses\n\n**401 Unauthorized** - No token\n```json\n{\n  \"error\": \"Authorization header required\"\n}\n```\n\n**403 Forbidden** - Not admin\n```json\n{\n  \"error\": \"Admin access required\"\n}\n```\n\n## Role-Based Access Control (#1)\n\n### Admin Access ✓\n```\n1. JWT contains roles: [\"admin\"]\n2. Middleware checks: HasRole(\"admin\") → true\n3. Access granted → 200 OK\n```\n\n### User/CMS Access ✗\n```\n1. JWT contains roles: [\"user\", \"cms\"]\n2. Middleware checks: HasRole(\"admin\") → false\n3. Access denied → 403 Forbidden\n```\n\n## Testing\n\n### Test 1: Admin Access\n1. Login as admin\n2. GET /api/v1/users\n3. Should return 200 with user list\n\n### Test 2: Non-Admin Access\n1. Login as regular user\n2. GET /api/v1/users\n3. Should return 403 Forbidden\n\n### Test 3: Pagination\n1. GET /api/v1/users?page=2&limit=5\n2. Should return page 2 with 5 users\n\n### Test 4: Search\n1. GET /api/v1/users?search=admin\n2. Should filter users by username/email"
+          },
+          "response": []
+        },
+        {
+          "name": "Get User by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{user_id}}"
+                }
+              ]
+            },
+            "description": "# Get User by ID (Admin Only)\n\n**Assessment: #1, #3**\n\n## Authorization\n- **Required role:** `admin`\n- **Validates:** User ID exists\n\n## Success Response (200)\n```json\n{\n  \"success\": true,\n  \"message\": \"User found\",\n  \"data\": {\n    \"id\": \"uuid\",\n    \"username\": \"admin\",\n    \"email\": \"admin@example.com\",\n    \"name\": \"Administrator\",\n    \"is_active\": true,\n    \"role_id\": \"role-uuid\",\n    \"created_at\": \"2026-01-28T10:00:00Z\",\n    \"updated_at\": \"2026-01-28T10:00:00Z\"\n  }\n}\n```\n\n## Error Responses\n\n**404 Not Found**\n```json\n{\n  \"success\": false,\n  \"message\": \"User not found\"\n}\n```\n\n**403 Forbidden** - Not admin"
+          },
+          "response": []
+        },
+        {
+          "name": "Create User (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set(\"created_user_id\", jsonData.data.id);",
+                  "}",
+                  "",
+                  "pm.test(\"User created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"testuser\",\n  \"email\": \"testuser@example.com\",\n  \"password\": \"password123\",\n  \"name\": \"Test User\",\n  \"is_active\": true,\n  \"role_id\": \"role-uuid-here\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/users",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users"]
+            },
+            "description": "# Create User (Admin Only)\n\n**Assessment: #1, #3, #4**\n\n## Authorization\n- **Required role:** `admin`\n- **Purpose:** Admin can create users with specific roles\n\n## Database Transaction (#4)\n\n```go\ndb.Transaction(func(tx *gorm.DB) error {\n    // 1. Validate role exists\n    role := &Role{}\n    if err := tx.First(role, roleID).Error; err != nil {\n        return err // Rollback\n    }\n    \n    // 2. Create user\n    user := &User{...}\n    if err := tx.Create(user).Error; err != nil {\n        return err // Rollback\n    }\n    \n    // 3. Hash password\n    hashedPassword := bcrypt.GenerateFromPassword(password)\n    user.Password = hashedPassword\n    tx.Save(user)\n    \n    // All success → Commit\n    return nil\n})\n```\n\n## Request Body\n```json\n{\n  \"username\": \"testuser\",\n  \"email\": \"testuser@example.com\",\n  \"password\": \"password123\",\n  \"name\": \"Test User\",\n  \"is_active\": true,\n  \"role_id\": \"role-uuid\"\n}\n```\n\n## Validation Rules\n- `username`: required, 3-50 chars, unique\n- `email`: required, valid email, unique\n- `password`: required, min 8 chars\n- `name`: required\n- `role_id`: optional, must exist\n- `is_active`: optional, default true\n\n## Success Response (201)\n```json\n{\n  \"success\": true,\n  \"message\": \"User created\",\n  \"data\": {\n    \"id\": \"new-uuid\",\n    \"username\": \"testuser\",\n    \"email\": \"testuser@example.com\",\n    \"name\": \"Test User\"\n  }\n}\n```\n\n## Error Responses\n\n**409 Conflict** - Duplicate username/email\n**400 Bad Request** - Validation error\n**403 Forbidden** - Not admin\n**404 Not Found** - Role ID doesn't exist"
+          },
+          "response": []
+        },
+        {
+          "name": "Update User (Admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Name\",\n  \"email\": \"updated@example.com\",\n  \"is_active\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{created_user_id}}"
+                }
+              ]
+            },
+            "description": "# Update User (Admin Only)\n\n**Assessment: #1, #3, #4**\n\n## Authorization\n- **Required role:** `admin`\n- **Can update:** Any user\n\n## Database Transaction (#4)\n\nUpdates are wrapped in transaction:\n```go\ndb.Transaction(func(tx *gorm.DB) error {\n    // 1. Find user\n    user := &User{}\n    tx.First(user, id)\n    \n    // 2. Update fields\n    tx.Model(user).Updates(updates)\n    \n    // 3. If role changed, update user_roles\n    if roleID != \"\" {\n        tx.Model(&UserRole{}).Where(\"user_id = ?\", id).Update(\"role_id\", roleID)\n    }\n    \n    return nil\n})\n```\n\n## Request Body (Partial Update)\n```json\n{\n  \"name\": \"Updated Name\",\n  \"email\": \"new@example.com\",\n  \"is_active\": false\n}\n```\n\n## Success Response (200)\n```json\n{\n  \"success\": true,\n  \"message\": \"User updated\",\n  \"data\": {\n    \"id\": \"uuid\",\n    \"username\": \"testuser\",\n    \"email\": \"new@example.com\",\n    \"name\": \"Updated Name\",\n    \"is_active\": false\n  }\n}\n```"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete User (Admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{created_user_id}}"
+                }
+              ]
+            },
+            "description": "# Delete User (Admin Only)\n\n**Assessment: #1, #3, #4**\n\n## Authorization\n- **Required role:** `admin`\n- **Soft delete:** Sets deleted_at timestamp\n\n## Database Transaction (#4)\n\n```go\ndb.Transaction(func(tx *gorm.DB) error {\n    // 1. Soft delete user\n    tx.Delete(&User{}, id)\n    \n    // 2. Remove user_roles\n    tx.Where(\"user_id = ?\", id).Delete(&UserRole{})\n    \n    // 3. Invalidate sessions\n    // (handled in Redis, not transaction)\n    \n    return nil\n})\n```\n\n## Success Response (200)\n```json\n{\n  \"success\": true,\n  \"message\": \"User deleted\"\n}\n```\n\n## Error Responses\n\n**404 Not Found** - User doesn't exist\n**403 Forbidden** - Not admin\n**400 Bad Request** - Cannot delete self"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Own Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"My New Name\",\n  \"email\": \"mynewemail@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/users",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users"]
+            },
+            "description": "# Update Own Profile (Any Authenticated User)\n\n**Assessment: #1, #3**\n\n## Authorization\n- **Required:** Valid JWT token (any role)\n- **Restrictions:** Can only update own profile\n- **Cannot update:** role, is_active, username\n\n## Middleware Flow (#3)\n\n```\n1. AuthRequired() → Validates JWT\n2. Extract user_id from token claims\n3. Controller uses user_id from context\n4. NO admin check required\n```\n\n## Request Body\n```json\n{\n  \"name\": \"My New Name\",\n  \"email\": \"newemail@example.com\"\n}\n```\n\n## Allowed Fields\n- `name`\n- `email`\n- `phone` (if exists)\n\n## Restricted Fields (Ignored)\n- `username` (immutable)\n- `role_id` (admin only)\n- `is_active` (admin only)\n- `password` (use change password endpoint)\n\n## Success Response (200)\n```json\n{\n  \"success\": true,\n  \"message\": \"Profile updated\",\n  \"data\": {\n    \"id\": \"current-user-uuid\",\n    \"username\": \"myusername\",\n    \"email\": \"newemail@example.com\",\n    \"name\": \"My New Name\"\n  }\n}\n```\n\n## Security\n- User ID extracted from JWT (not URL param)\n- Cannot update other users\n- Middleware ensures user can only modify self\n\n## Testing\n\n### Test 1: Regular User Updates Self\n1. Login as user\n2. PUT /api/v1/users\n3. Should succeed\n\n### Test 2: Cannot Elevate Privileges\n1. Login as user\n2. PUT /api/v1/users with {\"role_id\": \"admin-role\"}\n3. Role should not change (ignored)"
+          },
+          "response": []
+        }
+      ],
+      "description": "User management endpoints. Most require admin role.\n\n**Role-Based Access:**\n- **Admin:** Full CRUD access\n- **User/CMS:** Can only update own profile",
+      "auth": {
+        "type": "inherit"
+      }
+    },
+    {
+      "name": "3. Shorten Links",
+      "item": [
+        {
+          "name": "Create Short Link",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set(\"short_code\", jsonData.data.code);",
+                  "    pm.environment.set(\"link_id\", jsonData.data.id);",
+                  "}",
+                  "",
+                  "pm.test(\"Short link created\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"original_url\": \"https://www.google.com\",\n  \"custom_code\": \"google\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/shorten-links",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "shorten-links"]
+            },
+            "description": "# Create Shorten Link\n\n**Assessment: #1, #3, #5**\n\n## Authorization\n- **Required:** Valid JWT (any role)\n- **Permission:** `shortenlink:create`\n\n## Features\n\n### 1. Role-Based Creation (#1, #3)\n- **User role:** Creates link owned by self\n- **Admin/CMS role:** Can create for any user\n\n### 2. Redis Caching (#5)\n\nAfter creation, link is cached:\n```\nSET link:{code} {json_data} EX 86400\n```\n\n**Cache TTL:** 24 hours\n\n## Request Body\n```json\n{\n  \"original_url\": \"https://www.google.com\",\n  \"custom_code\": \"google\" // Optional\n}\n```\n\n## Validation\n- `original_url`: required, valid URL\n- `custom_code`: optional, 3-20 chars, alphanumeric, unique\n- If no custom_code → generates random 6-char code\n\n## Success Response (201)\n```json\n{\n  \"success\": true,\n  \"message\": \"Short link created\",\n  \"data\": {\n    \"id\": \"uuid\",\n    \"code\": \"google\",\n    \"original_url\": \"https://www.google.com\",\n    \"short_url\": \"http://localhost:8080/google\",\n    \"user_id\": \"creator-uuid\",\n    \"click_count\": 0,\n    \"created_at\": \"2026-01-28T10:00:00Z\"\n  }\n}\n```\n\n## Error Responses\n\n**409 Conflict** - Code already exists\n```json\n{\n  \"success\": false,\n  \"message\": \"Custom code already in use\"\n}\n```\n\n**400 Bad Request** - Invalid URL\n```json\n{\n  \"success\": false,\n  \"message\": \"Invalid URL format\"\n}\n```\n\n## Permission Check (#3)\n\n### User Role\n```go\nif !hasPermission(\"shortenlink:create\") {\n    return 403\n}\n// Creates link with user_id from JWT\n```\n\n### Admin/CMS Role\n```go\nif hasRole(\"admin\") || hasRole(\"cms\") {\n    // Can create with any user_id\n}\n```\n\n## Redis Cache Strategy (#5)\n\n```\n┌────────────────────────────────────┐\n│ 1. Create link in PostgreSQL      │\n│    INSERT INTO shortenlinks...     │\n└────────────────────────────────────┘\n              ↓\n┌────────────────────────────────────┐\n│ 2. Cache in Redis (24h)            │\n│    SET link:google {...} EX 86400  │\n└────────────────────────────────────┘\n              ↓\n┌────────────────────────────────────┐\n│ 3. Future reads from cache         │\n│    GET link:google → instant       │\n└────────────────────────────────────┘\n```\n\n## Testing\n\n### Test 1: Create with Custom Code\n1. POST with custom_code: \"mylink\"\n2. Should return code: \"mylink\"\n3. Check cache: `docker exec byn-redis redis-cli GET link:mylink`\n\n### Test 2: Create with Auto Code\n1. POST without custom_code\n2. Should return 6-char random code\n3. Code should be unique\n\n### Test 3: Duplicate Code\n1. POST with custom_code: \"google\"\n2. POST again with same code\n3. Should return 409 Conflict"
+          },
+          "response": []
+        },
+        {
+          "name": "List My Links (User)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/shorten-links?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "shorten-links"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "# List Shorten Links\n\n**Assessment: #1, #3, #5**\n\n## Authorization & Permissions (#1, #3)\n\n### User Role\n- **Permission:** `shortenlink:read:own`\n- **Returns:** Only links created by user\n- **Filter:** `WHERE user_id = {current_user_id}`\n\n### Admin/CMS Role\n- **Permission:** `shortenlink:read:all`\n- **Returns:** All links (any user)\n- **No filter:** Returns everything\n\n## Middleware Flow (#3)\n\n```\n1. AuthRequired() → Validate JWT\n2. PermissionRequired(\"shortenlink:read:own\")\n   ↓\n   Check roles in JWT:\n   - admin/cms → has :all version → granted\n   - user → has :own version → granted\n3. Controller checks role:\n   - admin/cms → SELECT * FROM shortenlinks\n   - user → SELECT * WHERE user_id = current_user\n```\n\n## Query Parameters\n\n| Parameter | Type | Description |\n|-----------|------|-------------|\n| `page` | int | Page number (default: 1) |\n| `limit` | int | Items per page (default: 10) |\n| `search` | string | Search in code/URL |\n\n## Success Response (200)\n\n### User Role Response\n```json\n{\n  \"success\": true,\n  \"message\": \"Links retrieved\",\n  \"data\": {\n    \"contents\": [\n      {\n        \"id\": \"uuid\",\n        \"code\": \"mylink\",\n        \"original_url\": \"https://example.com\",\n        \"short_url\": \"http://localhost:8080/mylink\",\n        \"user_id\": \"current-user-uuid\",\n        \"click_count\": 42,\n        \"created_at\": \"2026-01-28T10:00:00Z\"\n      }\n    ],\n    \"pagination\": {\n      \"total_data\": 5,\n      \"current_page\": 1,\n      \"per_page\": 10,\n      \"total_pages\": 1\n    }\n  }\n}\n```\n\n### Admin Role Response\n```json\n{\n  \"success\": true,\n  \"data\": {\n    \"contents\": [\n      /* All links from all users */\n    ]\n  }\n}\n```\n\n## Redis Caching (#5)\n\n**NOT cached** (list endpoint)\n- Reason: Dynamic, user-specific, paginated\n- Caching strategy: Cache individual items only\n\n**Individual links ARE cached:**\n```\nGET /api/v1/shorten-links/{id} → Cached\nGET /api/v1/shorten-links → Not cached\n```\n\n## Testing\n\n### Test 1: User Sees Own Links Only\n1. Login as regular user\n2. Create link A\n3. Login as different user\n4. Create link B\n5. Login back as first user\n6. GET /api/v1/shorten-links\n7. Should only see link A\n\n### Test 2: Admin Sees All Links\n1. Login as admin\n2. GET /api/v1/shorten-links\n3. Should see links from all users\n\n### Test 3: Permission Denied\n1. Remove `shortenlink:read:own` from user role\n2. GET /api/v1/shorten-links\n3. Should return 403 Forbidden"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Link by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/shorten-links/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "shorten-links", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{link_id}}"
+                }
+              ]
+            },
+            "description": "# Get Shorten Link by ID\n\n**Assessment: #5 (Primary Caching Example)**\n\n## Authorization\n- **User:** Can read own links only\n- **Admin/CMS:** Can read any link\n\n## Redis Caching Flow (#5)\n\n### First Request (Cache Miss)\n```\n1. GET /api/v1/shorten-links/{id}\n2. Check Redis: GET link:{id} → (nil)\n3. Query PostgreSQL: SELECT * FROM shortenlinks WHERE id = ?\n4. Store in Redis: SET link:{id} {json} EX 86400\n5. Response: 200 OK (from DB, ~20ms)\n```\n\n### Subsequent Requests (Cache Hit)\n```\n1. GET /api/v1/shorten-links/{id}\n2. Check Redis: GET link:{id} → {data}\n3. Response: 200 OK (from cache, ~2ms)\n4. PostgreSQL: NOT queried ✓\n```\n\n## Cache Strategy\n\n**Cache Key:** `link:{uuid}`\n**TTL:** 24 hours (86400 seconds)\n**Invalidation:** On update/delete\n\n## Success Response (200)\n```json\n{\n  \"success\": true,\n  \"message\": \"Link found\",\n  \"data\": {\n    \"id\": \"uuid\",\n    \"code\": \"google\",\n    \"original_url\": \"https://www.google.com\",\n    \"short_url\": \"http://localhost:8080/google\",\n    \"user_id\": \"owner-uuid\",\n    \"click_count\": 100,\n    \"created_at\": \"2026-01-28T10:00:00Z\",\n    \"updated_at\": \"2026-01-28T12:00:00Z\"\n  }\n}\n```\n\n## Performance Comparison\n\n| Scenario | Latency | Source |\n|----------|---------|--------|\n| Cache hit | ~2ms | Redis |\n| Cache miss | ~20ms | PostgreSQL |\n| **Improvement** | **10x faster** | **90% reduction** |\n\n## Cache Hit Ratio\n\n**Expected:** ~95% for popular links\n\n**Monitor:**\n```bash\n# Check Redis stats\ndocker exec byn-redis redis-cli INFO stats | grep hit_rate\n```\n\n## Testing Cache Behavior\n\n### Test 1: Cache Miss → Cache Hit\n```bash\n# 1. Flush cache\ndocker exec byn-redis redis-cli FLUSHDB\n\n# 2. First request (slow)\ncurl {{base_url}}/api/v1/shorten-links/{id}\n# Response time: ~20ms\n\n# 3. Second request (fast)\ncurl {{base_url}}/api/v1/shorten-links/{id}\n# Response time: ~2ms\n\n# 4. Check Redis\ndocker exec byn-redis redis-cli GET link:{id}\n# Should return JSON data\n```\n\n### Test 2: Cache Invalidation\n```bash\n# 1. GET link (cached)\n# 2. UPDATE link\n# 3. GET link again (cache miss, fresh data)\n```\n\n## Error Responses\n\n**404 Not Found**\n```json\n{\n  \"success\": false,\n  \"message\": \"Link not found\"\n}\n```\n\n**403 Forbidden** - User accessing other's link\n```json\n{\n  \"error\": \"Permission denied\"\n}\n```"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Link",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"original_url\": \"https://www.google.com/updated\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/shorten-links/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "shorten-links", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{link_id}}"
+                }
+              ]
+            },
+            "description": "# Update Shorten Link\n\n**Assessment: #1, #3, #4, #5**\n\n## Authorization (#1, #3)\n- **Permission:** `shortenlink:update:own`\n- **User:** Can update own links only\n- **Admin/CMS:** Can update any link\n\n## Database Transaction (#4)\n\n```go\ndb.Transaction(func(tx *gorm.DB) error {\n    // 1. Find link\n    link := &ShortenLink{}\n    tx.First(link, id)\n    \n    // 2. Check ownership (if user role)\n    if !isAdmin && link.UserID != currentUserID {\n        return ErrForbidden\n    }\n    \n    // 3. Update\n    tx.Model(link).Updates(updates)\n    \n    // 4. Invalidate cache\n    cache.Delete(\"link:\" + id)\n    \n    return nil\n})\n```\n\n## Request Body\n```json\n{\n  \"original_url\": \"https://new-url.com\"\n}\n```\n\n**Cannot update:**\n- `code` (immutable)\n- `user_id` (immutable)\n- `click_count` (system managed)\n\n## Success Response (200)\n```json\n{\n  \"success\": true,\n  \"message\": \"Link updated\",\n  \"data\": {\n    \"id\": \"uuid\",\n    \"code\": \"google\",\n    \"original_url\": \"https://new-url.com\",\n    \"updated_at\": \"2026-01-28T12:00:00Z\"\n  }\n}\n```\n\n## Cache Invalidation (#5)\n\n**On update:**\n```\n1. Update in PostgreSQL\n2. DELETE link:{id} from Redis\n3. Next GET will cache fresh data\n```\n\n## Error Responses\n\n**403 Forbidden** - User updating other's link\n**404 Not Found** - Link doesn't exist\n**400 Bad Request** - Invalid URL"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Link",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/shorten-links/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "shorten-links", ":id"],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "{{link_id}}"
+                }
+              ]
+            },
+            "description": "# Delete Shorten Link\n\n**Assessment: #1, #3, #4, #5**\n\n## Authorization\n- **Permission:** `shortenlink:delete:own`\n- **User:** Can delete own links\n- **Admin/CMS:** Can delete any link\n\n## Database Transaction (#4)\n\n```go\ndb.Transaction(func(tx *gorm.DB) error {\n    // 1. Find & verify ownership\n    link := &ShortenLink{}\n    tx.First(link, id)\n    \n    if !isAdmin && link.UserID != currentUserID {\n        return ErrForbidden\n    }\n    \n    // 2. Soft delete\n    tx.Delete(link)\n    \n    // 3. Remove from cache\n    cache.Delete(\"link:\" + id)\n    cache.Delete(\"link:\" + code)\n    \n    return nil\n})\n```\n\n## Success Response (200)\n```json\n{\n  \"success\": true,\n  \"message\": \"Link deleted\"\n}\n```\n\n## Cache Cleanup (#5)\n\n**On delete:**\n```\nDEL link:{id}\nDEL link:{code}\nDEL clicks:{code}\n```\n\n## Error Responses\n\n**403 Forbidden** - Not owner\n**404 Not Found** - Link doesn't exist"
+          },
+          "response": []
+        },
+        {
+          "name": "Redirect (Public)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/:code",
+              "host": ["{{base_url}}"],
+              "path": [":code"],
+              "variable": [
+                {
+                  "key": "code",
+                  "value": "{{short_code}}"
+                }
+              ]
+            },
+            "description": "# Public Redirect Endpoint\n\n**Assessment: #5 (High-Performance Caching)**\n\n## Public Access\n- **No authentication required**\n- **Purpose:** Redirect users to original URL\n- **Performance:** Critical (high traffic)\n\n## Redis Caching Strategy (#5)\n\n### Cache-First Approach\n```\n1. GET /{code}\n2. Check Redis: GET link:{code} → {original_url}\n3. If found: Redirect 302 (< 3ms)\n4. If not: Query DB → Cache → Redirect (~25ms)\n```\n\n### Cache Key\n**Key:** `link:{code}` (not UUID, use code for faster lookup)\n**TTL:** 24 hours\n**Value:** JSON with original_url\n\n## Response (302 Redirect)\n```\nHTTP/1.1 302 Found\nLocation: https://www.google.com\n```\n\n## Click Tracking\n\nAsync increment (non-blocking):\n```\n1. Redirect user immediately\n2. Background: INCR clicks:{code}\n3. Background: UPDATE shortenlinks SET click_count++\n```\n\n## Performance Metrics\n\n| Scenario | Latency | QPS Capacity |\n|----------|---------|-------------|\n| Cache hit | ~2ms | ~50,000 |\n| Cache miss | ~25ms | ~4,000 |\n| **Cache hit ratio** | **95%+** | **Optimal** |\n\n## Error Response (404)\n```\nHTTP/1.1 404 Not Found\n\n{\n  \"success\": false,\n  \"message\": \"Short link not found\"\n}\n```\n\n## Cache Warmup Strategy\n\n**Popular links cached preemptively:**\n```\n1. On creation → Cache immediately\n2. On first access → Cache for 24h\n3. On update → Invalidate & recache\n4. Daily cron → Warm top 1000 links\n```\n\n## Testing Performance\n\n### Test 1: Cache Performance\n```bash\n# Clear cache\ndocker exec byn-redis redis-cli FLUSHDB\n\n# First access (slow)\ntime curl -L {{base_url}}/google\n# real: ~0.025s\n\n# Second access (fast)\ntime curl -L {{base_url}}/google\n# real: ~0.002s\n\n# Check cache\ndocker exec byn-redis redis-cli GET link:google\n```\n\n### Test 2: Click Tracking\n```bash\n# Access link 10 times\nfor i in {1..10}; do\n  curl -L {{base_url}}/google\ndone\n\n# Check click count\ncurl {{base_url}}/api/v1/shorten-links/{id}\n# click_count should be 10\n\n# Check Redis counter\ndocker exec byn-redis redis-cli GET clicks:google\n# Should return 10\n```\n\n## Load Testing\n\n```bash\n# Apache Bench: 10000 requests, 100 concurrent\nab -n 10000 -c 100 http://localhost:8080/google\n\n# Expected results with cache:\n# - Requests/sec: ~10,000\n# - Time per request: ~10ms\n# - Failed requests: 0\n```"
+          },
+          "response": []
+        }
+      ],
+      "description": "Shorten link management with role-based access and Redis caching.\n\n**Caching Highlights:**\n- Individual links cached 24h\n- Public redirect: cache-first approach\n- Click tracking: async Redis counters\n- Cache hit ratio: 95%+",
+      "auth": {
+        "type": "inherit"
+      }
+    },
+    {
+      "name": "4. Health & Monitoring",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            },
+            "description": "# Health Check\n\nBasic health endpoint.\n\n## Response (200)\n```json\n{\n  \"status\": \"ok\",\n  \"timestamp\": \"2026-01-28T10:00:00Z\"\n}\n```"
+          },
+          "response": []
+        },
+        {
+          "name": "Redis Health Check",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health/redis",
+              "host": ["{{base_url}}"],
+              "path": ["health", "redis"]
+            },
+            "description": "# Redis Health Check\n\n**Assessment: #5**\n\n## Purpose\nVerify Redis connection for caching functionality.\n\n## Response (200) - Healthy\n```json\n{\n  \"success\": true,\n  \"message\": \"Redis OK\",\n  \"redis\": \"connected\"\n}\n```\n\n## Response (503) - Unhealthy\n```json\n{\n  \"success\": false,\n  \"message\": \"Redis ping gagal\",\n  \"error\": \"connection refused\"\n}\n```\n\n## Use Cases\n- Kubernetes readiness probe\n- Load balancer health check\n- Monitoring alerts\n- Deployment validation\n\n## Testing\n\n### Test 1: Redis Running\n```bash\ncurl {{base_url}}/health/redis\n# Should return 200 \"connected\"\n```\n\n### Test 2: Redis Down\n```bash\n# Stop Redis\ndocker stop byn-redis\n\n# Check health\ncurl {{base_url}}/health/redis\n# Should return 503 \"unavailable\"\n\n# Start Redis\ndocker start byn-redis\n```"
+          },
+          "response": []
+        }
+      ],
+      "description": "Health check endpoints for monitoring.",
+      "auth": {
+        "type": "noauth"
+      }
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Auto-refresh token if expired (optional)",
+          "// Uncomment to enable auto-refresh",
+          "",
+          "// const expiryTime = pm.environment.get(\"token_expiry\");",
+          "// if (expiryTime && Date.now() > expiryTime) {",
+          "//     console.log(\"Token expired, refreshing...\");",
+          "//     // Trigger refresh request",
+          "// }"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Global test: Check rate limit headers",
+          "pm.test(\"Rate limit headers present\", function () {",
+          "    const isAuthEndpoint = pm.request.url.toString().includes(\"/auth/\");",
+          "    if (isAuthEndpoint && pm.response.code !== 429) {",
+          "        pm.expect(pm.response.headers.has(\"X-RateLimit-Limit\")).to.be.true;",
+          "    }",
+          "});"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refresh_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "user_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "short_code",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "link_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "created_user_id",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

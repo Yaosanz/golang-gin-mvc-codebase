@@ -6,6 +6,7 @@ import (
 
 	"go-starter-app/app/http/dto"
 	"go-starter-app/app/http/utils"
+	"go-starter-app/app/validation"
 	"go-starter-app/interfaces"
 
 	"github.com/gin-gonic/gin"
@@ -30,7 +31,13 @@ func NewShortenlinkController(app interfaces.KernelDependencies) *ShortenlinkCon
 func (c *ShortenlinkController) Create(ctx *gin.Context) {
 	var req dto.CreateShortenLinkDTO
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		utils.SendError(ctx, http.StatusBadRequest, "Invalid request data", err)
+		// Parse binding errors to return proper validation error format
+		validationErr := validation.ParseBindingErrors(err)
+		if validationErr != nil {
+			utils.SendError(ctx, http.StatusBadRequest, "Invalid request data", validationErr)
+		} else {
+			utils.SendError(ctx, http.StatusBadRequest, "Invalid JSON format", gin.H{"message": err.Error()})
+		}
 		return
 	}
 

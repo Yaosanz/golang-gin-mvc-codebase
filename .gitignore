@@ -72,6 +72,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+.sh*history
+.sh
 
 # Binary / executable
 *.exe

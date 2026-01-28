@@ -125,23 +125,43 @@ func (m *SecureAuthMiddleware) PermissionRequired(permission string) gin.Handler
 			return
 		}
 
-		// Check if user has admin role - admin bypasses all permission checks
-		hasAdminRole, err := m.authService.CheckRole(c.Request.Context(), userID, "admin")
-		if err == nil && hasAdminRole {
-			// Admin has all permissions, proceed
-			c.Next()
-			return
+		// Get claims from context (set in AuthRequired middleware)
+		claimsVal, exists := c.Get("claims")
+		if exists {
+			if claims, ok := claimsVal.(*helpers.SecureJwtClaims); ok {
+				// Check if user has admin role from JWT - admin bypasses all permission checks
+				if claims.HasRole("admin") {
+					// Admin has all permissions, proceed
+					c.Next()
+					return
+				}
+			}
 		}
 
 		// Check permission server-side for non-admin users
 		hasPermission, err := m.authService.CheckPermission(c.Request.Context(), userID, permission)
 		if err != nil {
-			// Permission check error usually means cache expired - require re-login
-			log.Printf("[PERMISSION ERROR] Failed to check permission '%s' for user %s: %v", permission, userID, err)
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"error": "Session expired, please login again",
-			})
-			return
+			// Permission check error - try to reload from database
+			log.Printf("[PERMISSION WARNING] Cache miss for permission '%s', attempting DB fallback for user %s", permission, userID)
+			
+			// Try to reload permissions from database
+			perms, dbErr := m.authService.GetUserPermissionsFromDB(c.Request.Context(), userID)
+			if dbErr != nil {
+				log.Printf("[PERMISSION ERROR] Failed to load permissions from DB for user %s: %v", userID, dbErr)
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+					"error": "Session expired, please login again",
+				})
+				return
+			}
+
+			// Check if user has the required permission
+			hasPermission = false
+			for _, p := range perms {
+				if p == permission {
+					hasPermission = true
+					break
+				}
+			}
 		}
 
 		if !hasPermission {
@@ -175,7 +195,24 @@ func (m *SecureAuthMiddleware) RoleRequired(role string) gin.HandlerFunc {
 			return
 		}
 
-		// Check role server-side
+		// Get claims from context (set in AuthRequired middleware)
+		claimsVal, exists := c.Get("claims")
+		if exists {
+			if claims, ok := claimsVal.(*helpers.SecureJwtClaims); ok {
+				// Check role from JWT claims directly (no cache needed)
+				if claims.HasRole(role) {
+					c.Next()
+					return
+				}
+				// Role not found in JWT
+				c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+					"error": "Insufficient role",
+				})
+				return
+			}
+		}
+
+		// Fallback: Check role server-side (requires cache)
 		hasRole, err := m.authService.CheckRole(c.Request.Context(), userID, role)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{

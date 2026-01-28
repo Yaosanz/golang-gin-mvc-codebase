@@ -237,8 +237,26 @@ func (ctl *AuthController) Profile(c *gin.Context) {
 	}
 
 	authSvc := ctl.app.GetService().GetAuthService().(*services.SecureAuthService)
-	roles, _ := authSvc.GetUserRoles(c.Request.Context(), userID)
-	perms, _ := authSvc.GetUserPermissions(c.Request.Context(), userID)
+	
+	// Get roles from cache, fallback to database if cache miss
+	roles, err := authSvc.GetUserRoles(c.Request.Context(), userID)
+	if err != nil {
+		// Cache miss - load from database and repopulate cache
+		roles = user.GetAllRoleNames()
+		if len(roles) == 0 {
+			roles = []string{user.Role} // Fallback to legacy role field
+		}
+	}
+	
+	// Get permissions from cache, fallback to database if cache miss
+	perms, err := authSvc.GetUserPermissions(c.Request.Context(), userID)
+	if err != nil {
+		// Cache miss - need to reload permissions from database
+		perms, _ = authSvc.GetUserPermissionsFromDB(c.Request.Context(), userID)
+		if perms == nil {
+			perms = []string{}
+		}
+	}
 
 	utils.SendOne(c, gin.H{
 		"id":          user.ID.String(),
