@@ -47,7 +47,4 @@ func ShortenlinkRoute(
 		compat.PUT("/:code", secureAuth.AuthRequired(), controller.UpdateByCode)
 	}
 
-	// PUBLIC REDIRECT
-	router.GET("/r/:code", controller.Redirect)
-
 }

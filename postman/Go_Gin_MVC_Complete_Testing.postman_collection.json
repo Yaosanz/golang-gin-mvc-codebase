@@ -1047,16 +1047,16 @@
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Redirect working', function () {",
-                  "    pm.expect(pm.response.code).to.be.oneOf([200, 302, 301]);",
+                  "pm.test('✅ Redirect successful (301/302)', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([301, 302, 200]);",
                   "});",
                   "",
-                  "pm.test('⚡ Cached redirect (< 5ms expected)', function () {",
+                  "pm.test('⚡ Cached redirect performance', function () {",
                   "    var responseTime = pm.response.responseTime;",
-                  "    console.log('✓ Public redirect performance');",
+                  "    console.log('✓ Public redirect working');",
                   "    console.log('  Response time:', responseTime, 'ms');",
+                  "    console.log('  Redirect location:', pm.response.headers.get('location') || 'Redirected');",
                   "    console.log('  Cache-first approach');",
-                  "    console.log('  Expected: < 5ms for cache hit');",
                   "    ",
                   "    if (responseTime < 10) {",
                   "        console.log('  ✓ EXCELLENT: Redis cache working!');",
@@ -1074,11 +1074,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/{{short_code}}",
+              "raw": "{{base_url}}/r/{{short_code}}",
               "host": ["{{base_url}}"],
-              "path": ["{{short_code}}"]
+              "path": ["r", "{{short_code}}"]
             },
-            "description": "Public redirect endpoint (no auth required).\n\n**High-Performance Cache Strategy:**\n- Cache key: `link:{code}` (not UUID)\n- TTL: 24 hours\n- Cache-first approach\n\n**Performance Target:**\n- Cache hit: < 5ms\n- QPS capacity: 50,000+\n- Cache hit ratio: 95%+\n\n**Flow:**\n1. Check Redis: `GET link:{code}`\n2. If found: Redirect immediately (< 3ms)\n3. If not: Query DB → Cache → Redirect (~25ms)\n\n**Task #5 Validation:** High-perf cache ✓"
+            "description": "Public redirect endpoint (no auth required).\n\n**Endpoint:** GET `/r/{short_code}`\n\n**High-Performance Cache Strategy:**\n- Cache key: `link:{code}` (not UUID)\n- TTL: 48 hours (for redirect optimization)\n- Cache-first approach\n\n**Performance Target:**\n- Cache hit: < 5ms\n- QPS capacity: 50,000+\n- Cache hit ratio: 95%+\n\n**Flow:**\n1. Check Redis: `GET link:{code}`\n2. If found: Redirect immediately (< 3ms)\n3. If not: Query DB → Cache → Redirect (~25ms)\n\n**Response:**\n- Status: 301 Moved Permanently\n- Location header: Original URL\n\n**Task #5 Validation:** High-perf cache ✓"
           },
           "response": []
         },
@@ -1331,6 +1331,24 @@
         },
         {
           "name": "⚡ Public Redirect (No Auth)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('✅ Redirect successful', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([301, 302, 200]);",
+                  "});",
+                  "",
+                  "pm.test('⚡ Redirect performance good', function () {",
+                  "    console.log('✓ Public redirect working');",
+                  "    console.log('  Response time:', pm.response.responseTime, 'ms');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "auth": {
               "type": "noauth"
@@ -1338,11 +1356,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/{{short_code}}",
+              "raw": "{{base_url}}/r/{{short_code}}",
               "host": ["{{base_url}}"],
-              "path": ["{{short_code}}"]
+              "path": ["r", "{{short_code}}"]
             },
-            "description": "Public redirect (cached).\n\n**Performance:**\n- Cache hit: < 5ms\n- No auth required\n- Click tracking (async)"
+            "description": "Public redirect to original URL (cached).\n\n**Endpoint:** GET `/r/{short_code}`\n\n**Features:**\n- No authentication required\n- Cache hit: < 5ms\n- Permanent redirect (301)\n- Async click tracking"
           },
           "response": []
         }

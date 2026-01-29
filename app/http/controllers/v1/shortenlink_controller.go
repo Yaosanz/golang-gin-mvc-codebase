@@ -347,7 +347,8 @@ func (c *ShortenlinkController) Redirect(ctx *gin.Context) {
 		Redirect(ctx.Request.Context(), code)
 
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		// Check if it's a "not found" error
+		if errors.Is(err, gorm.ErrRecordNotFound) || errors.Is(err, errors.New("shortlink not found")) {
 			utils.SendError(ctx, http.StatusNotFound, "Shortlink not found", nil)
 			return
 		}
@@ -355,5 +356,12 @@ func (c *ShortenlinkController) Redirect(ctx *gin.Context) {
 		return
 	}
 
+	// Ensure originalURL is not empty before redirecting
+	if originalURL == "" {
+		utils.SendError(ctx, http.StatusInternalServerError, "Original URL is empty", nil)
+		return
+	}
+
+	// Use StatusMovedPermanently (301) for permanent redirect
 	ctx.Redirect(http.StatusMovedPermanently, originalURL)
 }

@@ -326,6 +326,12 @@ func (s *ShortenlinkService) UpdateByCode(
 		return nil, errors.New("invalid user id")
 	}
 
+	// Smart detection: if input looks like a UUID, use Update (by ID) instead
+	if _, err := uuid.Parse(code); err == nil {
+		// It's a valid UUID, use the Update method instead
+		return s.Update(ctx, code, originalURL, userID)
+	}
+
 	updatedLink, err := helpers.RunInTransactionWithResult(ctx, s.deps.GetDB(), func(ctx context.Context, tx *gorm.DB) (*models.ShortenLink, error) {
 		data, err := s.repo.FindByCode(ctx, code)
 		if err != nil {
@@ -391,10 +397,24 @@ func (s *ShortenlinkService) Redirect(
 	ctx context.Context,
 	code string,
 ) (string, error) {
+	if code == "" {
+		return "", errors.New("short code is required")
+	}
+
 	link, err := s.GetByCode(ctx, code)
 	if err != nil {
 		return "", err
 	}
+
+	if link == nil {
+		return "", errors.New("shortlink not found")
+	}
+
+	// Return the original URL
+	if link.OriginalURL == "" {
+		return "", errors.New("original URL is empty")
+	}
+
 	return link.OriginalURL, nil
 }
 

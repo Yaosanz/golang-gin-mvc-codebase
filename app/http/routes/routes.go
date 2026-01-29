@@ -34,11 +34,11 @@ func Register(
 			c.JSON(200, gin.H{"message": "welcome to web"})
 		})
 
-		// Public redirect for short links
-		web.GET("/mydigilearn/:code", func(c *gin.Context) {
-			controller := v1Controller.NewShortenlinkController(app)
-			controller.Redirect(c)
-		})
+		// Public redirect for short links - Multiple URL formats for flexibility
+		controller := v1Controller.NewShortenlinkController(app)
+		web.GET("/r/:code", controller.Redirect)           // /r/{code}
+		web.GET("/mydigilearn/:code", controller.Redirect) // /mydigilearn/{code} (legacy)
+		web.GET("/s/:code", controller.Redirect)           // /s/{code} (short alias)
 	}
 
 	// Handle common browser requests to avoid 404 spam
