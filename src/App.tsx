@@ -10,6 +10,7 @@ import ShortenLinksList from './components/ShortenLinksList.tsx';
 import ShortenLinkCreate from './components/ShortenLinkCreate.tsx';
 import UsersList from './components/UsersList.tsx';
 import Settings from './components/Settings.tsx';
+import RedirectHandler from './components/RedirectHandler.tsx';
 import { AuthProvider, useAuth } from './context/AuthContext.tsx';
 import ErrorBoundary from './components/ErrorBoundary.tsx';
 
@@ -138,7 +139,10 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ element, requiredRole }
   }
 
   if (requiredRole) {
-    const hasRole = user?.roles?.some((r) => r.name === requiredRole || r === requiredRole);
+    const hasRole = user?.roles?.some((r) => {
+      if (typeof r === 'string') return r === requiredRole;
+      return r.name === requiredRole;
+    });
     console.log('ProtectedRoute - Role check:', requiredRole, 'hasRole:', hasRole, 'userRoles:', user?.roles);
     if (!hasRole) {
       console.log('ProtectedRoute - Missing required role, redirecting to dashboard');
@@ -166,6 +170,9 @@ function App() {
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/" element={<Navigate to="/dashboard" />} />
+
+                {/* Public Redirect Route - Must be before protected routes */}
+                <Route path="/r/:code" element={<RedirectHandler />} />
 
                 {/* Protected Routes - Dashboard */}
                 <Route path="/dashboard" element={<ProtectedRoute element={<Dashboard />} />} />

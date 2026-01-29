@@ -107,8 +107,19 @@ export const getById = async (id: string): Promise<ShortenLinkResponse> => {
 };
 
 // Update shortened link - Task 4: Database Transactions & Task 5: Cache Invalidation
-export const update = async (code: string, data: UpdateShortenLinkRequest): Promise<ShortenLinkResponse> => {
-  const response = await api.put<ShortenLinkDetailResponse>(`/v1/shortenlinks/${code}`, data);
+// Update shortened link - Task 4: Database Transactions & Task 5: Cache Invalidation
+// Uses PUT /api/shortenlinks/:code with {url}
+export const update = async (id: string, data: UpdateShortenLinkRequest): Promise<ShortenLinkResponse> => {
+  const urlValue = data.url || data.original_url;
+  if (!urlValue || !urlValue.trim()) {
+    throw new Error('URL is required');
+  }
+
+  const payload = {
+    url: urlValue.trim(),
+  };
+
+  const response = await api.put<ShortenLinkDetailResponse>(`/shortenlinks/${id}`, payload);
   return transformLink(response.data.data);
 };
 

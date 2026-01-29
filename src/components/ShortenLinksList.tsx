@@ -41,17 +41,30 @@ const ShortenLinkList: React.FC = () => {
 
   const handleUpdate = async () => {
     if (!editDialog.link) return;
+
+    const trimmedUrl = newUrl.trim();
+    if (!trimmedUrl) {
+      setSnackbar({
+        open: true,
+        message: 'URL cannot be empty',
+        severity: 'error',
+      });
+      return;
+    }
+
     try {
       setIsSaving(true);
-      // Backend expects 'original_url'
-      await update(editDialog.link.id, { original_url: newUrl });
+      // Backend PUT /api/shortenlinks/:code expects {url}
+      await update(editDialog.link.id, { url: trimmedUrl });
       setSnackbar({ open: true, message: 'Link updated successfully', severity: 'success' });
       setEditDialog({ open: false, link: null });
       await fetchLinks();
     } catch (err: any) {
+      const errorMsg = err.response?.data?.message || err.response?.data?.error || err.message || 'Failed to update link';
+      console.error('Update link error:', err.response?.data);
       setSnackbar({
         open: true,
-        message: err.response?.data?.message || 'Failed to update link',
+        message: errorMsg,
         severity: 'error',
       });
     } finally {
@@ -76,7 +89,7 @@ const ShortenLinkList: React.FC = () => {
   };
 
   const handleCopy = (code: string) => {
-    const shortUrl = `${window.location.origin}/mydigilearn/${code}`;
+    const shortUrl = `${window.location.origin}/r/${code}`;
     navigator.clipboard.writeText(shortUrl);
     setSnackbar({ open: true, message: 'Short URL copied to clipboard', severity: 'success' });
   };
@@ -154,7 +167,7 @@ const ShortenLinkList: React.FC = () => {
             </Tooltip>
           }
           label="Open"
-          onClick={() => window.open(`${window.location.origin}/mydigilearn/${params.row.code}`, '_blank')}
+          onClick={() => window.open(`${window.location.origin}/r/${params.row.code}`, '_blank')}
           color="primary"
         />,
         <GridActionsCellItem
