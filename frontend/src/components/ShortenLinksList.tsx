@@ -89,7 +89,8 @@ const ShortenLinkList: React.FC = () => {
   };
 
   const handleCopy = (code: string) => {
-    const shortUrl = `${window.location.origin}/r/${code}`;
+    const baseUrl = process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:8080';
+    const shortUrl = `${baseUrl}/r/${code}`;
     navigator.clipboard.writeText(shortUrl);
     setSnackbar({ open: true, message: 'Short URL copied to clipboard', severity: 'success' });
   };
@@ -167,7 +168,10 @@ const ShortenLinkList: React.FC = () => {
             </Tooltip>
           }
           label="Open"
-          onClick={() => window.open(`${window.location.origin}/r/${params.row.code}`, '_blank')}
+          onClick={() => {
+            const baseUrl = process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:8080';
+            window.open(`${baseUrl}/r/${params.row.code}`, '_blank');
+          }}
           color="primary"
         />,
         <GridActionsCellItem

@@ -17,10 +17,11 @@ const RedirectHandler: React.FC = () => {
       try {
         // Langsung redirect ke backend endpoint
         // Backend akan handle redirect ke original URL dengan HTTP 302
-        const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+        // Note: Redirect routes are at root level (not /api prefix)
+        const baseUrl = process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:8080';
 
         // Langsung redirect - browser akan follow 302 redirect dari backend
-        window.location.href = `${backendUrl}/r/${code}`;
+        window.location.href = `${baseUrl}/r/${code}`;
       } catch (err: any) {
         console.error('Redirect error:', err);
         setError('Failed to redirect. The link may be invalid or expired.');

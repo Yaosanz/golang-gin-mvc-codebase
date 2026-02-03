@@ -76,7 +76,8 @@ const ShortenLinkCreate: React.FC = () => {
 
   const getShareLink = () => {
     if (!createdLink) return '';
-    return `${window.location.origin}/r/${createdLink.code}`;
+    const baseUrl = process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:8080';
+    return `${baseUrl}/r/${createdLink.code}`;
   };
 
   return (
