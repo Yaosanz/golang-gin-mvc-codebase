@@ -43,8 +43,9 @@ export default function Dashboard() {
       if (isAdmin) {
         try {
           const usersData = await getAllUsers({ limit: 1000 });
-          totalUsers = usersData.data.length;
-          console.log('Users data count:', totalUsers);
+          // Use total from pagination response, not data.length
+          totalUsers = usersData.total || usersData.data.length;
+          console.log('Users data count:', totalUsers, 'from response:', usersData);
         } catch (userErr) {
           console.error('Failed to fetch users:', userErr);
         }
