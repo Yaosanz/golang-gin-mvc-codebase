@@ -1,0 +1,67 @@
+version: "3.9"
+
+services:
+  # Backend API (Golang Gin)
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: byn-api
+    ports:
+      - "8080:8080"
+    environment:
+      - ENV=development
+      - PORT=8080
+      - DB_HOST=db
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - redis
+    networks:
+      - byn-network
+    volumes:
+      - ./backend:/app
+    # For development with hot reload, use:
+    # command: /app/bin/hot-reload
+
+  # Frontend (React)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: byn-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8080
+    depends_on:
+      - api
+    networks:
+      - byn-network
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    container_name: byn-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly no
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    networks:
+      - byn-network
+
+networks:
+  byn-network:
+    driver: bridge
+
+volumes:
+  redis_data:

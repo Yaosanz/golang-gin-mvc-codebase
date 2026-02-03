@@ -1,53 +1,35 @@
-# Binaries
-/bin/
-/obj/
-/*.exe
-/*.exe~
-/*.out
-/*.test
-
-
-# Vendor directory
-/vendor/
-
-# Environment variables
-.env
-*.env
-credentials/*.json
-
-
-# IDE and editor files
-*.idea/
-*.vscode/
-*.swp
-*.swo
-.DS_Store
-
-# Logs
-*.log
-
-# Coverage files
-*.cov
-*.out
-
-
-# rsa key
-config/keycloack/rsa-key/*.key
-.gcloud-service.json
-.gcloud-credentials.json
-gcloud-credentials.json
-
-# Logs
-logs/
-*.log
-
-# OS / Editor
+# OS & IDE
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
 *.swp
 *.swo
+
+# Logs
+*.log
+logs/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Docker
+docker-compose.override.yml
+
+# Build artifacts
+bin/
+dist/
+build/
+
+# Dependencies
+node_modules/
+vendor/
+
+# IDE
+*.idea/
+*.vscode/
 
 # Build output frontend
 .next/

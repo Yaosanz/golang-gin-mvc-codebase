@@ -2,52 +2,127 @@
 
 A robust, production-ready Go web application built with Gin framework, featuring MVC architecture, PostgreSQL database, secure JWT authentication, role-based access control, and professional Redis caching implementation with best practices.
 
-**Status**: ✅ Production Ready | **Version**: 2026.01 | **5 Core Tasks**: ✅ Implemented & Tested
+**Status**: ✅ Production Ready | **Version**: 2026.01 | **Architecture**: Monorepo (Backend + Frontend)
 
 ---
 
 ## 🗂️ Project Structure (Monorepo)
 
-- backend/ → Golang Gin API (source, configs, migrations, docs)
-- frontend/ → Web app (placeholder for React/Next/Vue)
-- docker-compose.redis.yml → Redis for local development
-
-Run backend from repo root:
-
-- cd backend
-- go run cmd/app/main.go
+```
+golang-gin-mvc-codebase/
+├── backend/                  # Golang Gin API
+│   ├── app/                 # Core app logic
+│   ├── cmd/                 # Entry points
+│   ├── config/              # Configuration
+│   ├── database/            # DB migrations & setup
+│   ├── helpers/             # Utilities
+│   ├── interfaces/          # Interfaces & contracts
+│   ├── pkg/                 # Reusable packages
+│   ├── go.mod & go.sum      # Go dependencies
+│   ├── Dockerfile           # Backend Docker image
+│   ├── Makefile             # Build scripts
+│   ├── .air.toml            # Hot reload config
+│   └── .gitignore           # Backend ignore rules
+│
+├── frontend/                # React/TypeScript Web App
+│   ├── src/                 # React source code
+│   │   ├── api/            # API calls
+│   │   ├── components/     # React components
+│   │   ├── context/        # Context API
+│   │   ├── App.tsx         # Main app
+│   │   └── index.tsx       # Entry point
+│   ├── public/             # Static files
+│   ├── package.json        # Node dependencies
+│   ├── Dockerfile          # Frontend Docker image
+│   ├── .gitignore          # Frontend ignore rules
+│   └── .env.example        # Env template
+│
+├── docker-compose.yml      # Full stack orchestration
+├── docker-compose.redis.yml # Redis for development
+├── .gitignore             # Global ignore rules
+└── README.md              # This file
+```
 
 ---
 
-## 🎯 5 Core Implementation Tasks
+## 🚀 Quick Start
 
-All 5 core tasks are **fully implemented, tested, and validated** with comprehensive Postman collection.
+### Local Development
 
-### Task 1: JWT Multi-Role Authentication ✅
+#### Backend Only
 
-- **Description**: User registration and login with JWT token generation supporting multiple roles
-- **Implementation**:
-  - Secure JWT generation with minimal payload (user_id, token_type, session_id only)
-  - Multi-role support per user
-  - Password hashing with bcrypt
-  - Session management in Redis
-- **Endpoints**: `POST /api/auth/register`, `POST /api/auth/login`
-- **Test Coverage**: 5 Postman tests (valid register, duplicate register, valid login, invalid password, token verification)
+```bash
+cd backend
+go run cmd/app/main.go
+```
 
-### Task 2: RBAC Token Payload ✅
+#### Full Stack with Docker Compose
 
-- **Description**: Token payload contains user_id, username, email, and roles for role-based access control
-- **Implementation**:
-  - Payload structure: `{ user_id, username, email, roles }`
-  - Server-side permission verification
-  - Role caching with 15-minute TTL
-  - Permission-based access control middleware
-- **Features**: Roles array populated in response, permission inheritance system
-- **Test Coverage**: 2 Postman tests (valid payload check, missing token error)
+```bash
+# Start all services
+docker compose up -d
 
-### Task 3: Middleware Token Identification ✅
+# View logs
+docker compose logs -f api frontend redis
 
-- **Description**: Middleware validates tokens with Bearer format, handles invalid/missing/expired tokens
+# Stop services
+docker compose down
+```
+
+#### Frontend Development
+
+```bash
+cd frontend
+npm install
+npm start
+```
+
+---
+
+## 📋 API Documentation
+
+The backend provides comprehensive REST API endpoints for:
+
+- **Authentication**: Register, Login, Token Verification
+- **Users**: CRUD operations with role-based access
+- **Short Links**: Create, retrieve, and manage shortened URLs
+- **Public Redirects**: Multi-format redirect endpoints
+
+Full API documentation available in `backend/docs` and Postman collection in `backend/postman`.
+
+---
+
+## 🔐 Core Features Implemented
+
+### 1. JWT Multi-Role Authentication ✅
+
+- Secure JWT token generation with minimal payload
+- Multi-role support per user
+- bcrypt password hashing
+- Session management in Redis
+
+### 2. RBAC Token Payload ✅
+
+- Token contains: user_id, username, email, roles
+- Server-side permission verification
+- Role caching with 15-minute TTL
+
+### 3. Middleware Token Identification ✅
+
+- Bearer token format validation
+- Invalid/missing/expired token handling
+
+### 4. Pagination & Filtering ✅
+
+- RESTful query parameters
+- Consistent response structure
+
+### 5. Public Redirect Endpoints ✅
+
+- Multiple format support (JSON, HTML, Plain Text)
+- Short URL resolution and redirection
+
+````
 - **Implementation**:
   - Bearer token format validation
   - JWT signature verification
@@ -115,7 +190,7 @@ All 5 core tasks are **fully implemented, tested, and validated** with comprehen
 ```bash
 # Open Postman and import:
 # File → Import → Select backend/postman/Testing.postman_collection.json
-```
+````
 
 #### 2. Configure Environment
 
