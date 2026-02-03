@@ -6,6 +6,19 @@ A robust, production-ready Go web application built with Gin framework, featurin
 
 ---
 
+## 🗂️ Project Structure (Monorepo)
+
+- backend/ → Golang Gin API (source, configs, migrations, docs)
+- frontend/ → Web app (placeholder for React/Next/Vue)
+- docker-compose.redis.yml → Redis for local development
+
+Run backend from repo root:
+
+- cd backend
+- go run cmd/app/main.go
+
+---
+
 ## 🎯 5 Core Implementation Tasks
 
 All 5 core tasks are **fully implemented, tested, and validated** with comprehensive Postman collection.
@@ -77,7 +90,7 @@ All 5 core tasks are **fully implemented, tested, and validated** with comprehen
 
 ## 📊 Test Coverage Summary
 
-**Postman Collection**: [postman/Testing.postman_collection.json](postman/Testing.postman_collection.json)
+**Postman Collection**: [backend/postman/Testing.postman_collection.json](backend/postman/Testing.postman_collection.json)
 
 | Task                            | Tests           | Assertions        | Status       |
 | ------------------------------- | --------------- | ----------------- | ------------ |
@@ -101,14 +114,14 @@ All 5 core tasks are **fully implemented, tested, and validated** with comprehen
 
 ```bash
 # Open Postman and import:
-# File → Import → Select postman/Testing.postman_collection.json
+# File → Import → Select backend/postman/Testing.postman_collection.json
 ```
 
 #### 2. Configure Environment
 
 ```bash
 # Import environment:
-# File → Import → Select postman/Development.postman_environment.json
+# File → Import → Select backend/postman/Development.postman_environment.json
 
 # Variables configured:
 # - base_url: http://localhost:8080
@@ -120,8 +133,8 @@ All 5 core tasks are **fully implemented, tested, and validated** with comprehen
 
 ```bash
 # Using Newman CLI:
-newman run postman/Testing.postman_collection.json \
-  -e postman/Development.postman_environment.json
+newman run backend/postman/Testing.postman_collection.json \
+  -e backend/postman/Development.postman_environment.json
 
 # Expected Output:
 # → 23 requests executed
@@ -1078,16 +1091,16 @@ type ShortenLink struct {
 
 #### Postman Collection Tests (23 requests, 49 assertions)
 
-**File**: [postman/Testing.postman_collection.json](postman/Testing.postman_collection.json)
+**File**: [backend/postman/Testing.postman_collection.json](backend/postman/Testing.postman_collection.json)
 
 ```bash
 # Run full test suite with Newman
-newman run postman/Testing.postman_collection.json \
-  -e postman/Development.postman_environment.json
+newman run backend/postman/Testing.postman_collection.json \
+  -e backend/postman/Development.postman_environment.json
 
 # Run with detailed output
-newman run postman/Testing.postman_collection.json \
-  -e postman/Development.postman_environment.json \
+newman run backend/postman/Testing.postman_collection.json \
+  -e backend/postman/Development.postman_environment.json \
   --verbose
 ```
 
@@ -1135,8 +1148,8 @@ go run cmd/migration/main.go up
 go run cmd/seeder/main.go run:all
 
 # 3. Run integration tests
-newman run postman/Testing.postman_collection.json \
-  -e postman/Development.postman_environment.json
+newman run backend/postman/Testing.postman_collection.json \
+  -e backend/postman/Development.postman_environment.json
 
 # 4. Verify performance
 # Check cache hit times (should be < 5ms on second request)
@@ -1263,7 +1276,7 @@ golang-gin-mvc-codebase/
 │   ├── scheduler/                         # Job scheduling
 │   └── server/                            # Server utilities
 │
-├── postman/                               # Postman testing
+├── backend/postman/                       # Postman testing
 │   ├── Testing.postman_collection.json    # Main test collection
 │   ├── Development.postman_environment.json
 │   └── README.md
@@ -1395,8 +1408,8 @@ go run cmd/app/main.go
 # Should be: http://localhost:8080
 
 # Run tests again
-newman run postman/Testing.postman_collection.json \
-  -e postman/Development.postman_environment.json
+newman run backend/postman/Testing.postman_collection.json \
+  -e backend/postman/Development.postman_environment.json
 ```
 
 ### Debug Mode
@@ -1443,7 +1456,7 @@ REDIS_POOL_SIZE=10
 ### Documentation Files
 
 - **[TESTING_REPORT.md](TESTING_REPORT.md)** - Detailed test execution results
-- **[postman/README.md](postman/README.md)** - Postman collection documentation
+- **[backend/postman/README.md](backend/postman/README.md)** - Postman collection documentation
 
 ### API Documentation
 
@@ -1459,10 +1472,11 @@ REDIS_POOL_SIZE=10
    - Task 5: [helpers/cache_manager.go](helpers/cache_manager.go)
 
 2. **Testing**:
-   - [postman/Testing.postman_collection.json](postman/Testing.postman_collection.json)
-   - [helpers/jwt_secure_test.go](helpers/jwt_secure_test.go)
-   - [helpers/cache_helpers_test.go](helpers/cache_helpers_test.go)
-   - [helpers/transaction_helper_test.go](helpers/transaction_helper_test.go)
+
+- [backend/postman/Testing.postman_collection.json](backend/postman/Testing.postman_collection.json)
+- [helpers/jwt_secure_test.go](helpers/jwt_secure_test.go)
+- [helpers/cache_helpers_test.go](helpers/cache_helpers_test.go)
+- [helpers/transaction_helper_test.go](helpers/transaction_helper_test.go)
 
 ---
 
