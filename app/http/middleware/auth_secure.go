@@ -142,35 +142,42 @@ func (m *SecureAuthMiddleware) PermissionRequired(permission string) gin.Handler
 		hasPermission, err := m.authService.CheckPermission(c.Request.Context(), userID, permission)
 		if err != nil {
 			// Permission check error - try to reload from database
-			log.Printf("[PERMISSION WARNING] Cache miss for permission '%s', attempting DB fallback for user %s", permission, userID)
+			log.Printf("[PERMISSION] Checking permission '%s' for user %s (cache miss)", permission, userID)
 			
 			// Try to reload permissions from database
+			log.Printf("[PERMISSION] DB fallback for user %s, permission '%s'", userID, permission)
 			perms, dbErr := m.authService.GetUserPermissionsFromDB(c.Request.Context(), userID)
 			if dbErr != nil {
 				log.Printf("[PERMISSION ERROR] Failed to load permissions from DB for user %s: %v", userID, dbErr)
 				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 					"error": "Session expired, please login again",
+					"debug": dbErr.Error(),
 				})
 				return
 			}
 
 			// Check if user has the required permission
 			hasPermission = false
+			log.Printf("[PERMISSION DEBUG] Loaded %d permissions from DB for user %s", len(perms), userID)
 			for _, p := range perms {
 				if p == permission {
 					hasPermission = true
+					log.Printf("[PERMISSION OK] User %s has permission '%s'", userID, permission)
 					break
 				}
 			}
 		}
 
 		if !hasPermission {
+			log.Printf("[PERMISSION DENIED] User %s denied for permission '%s'", userID, permission)
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-				"error": "Insufficient permissions",
+				"error":    "Insufficient permissions",
+				"required": permission,
 			})
 			return
 		}
 
+		log.Printf("[PERMISSION GRANTED] User %s has permission '%s'", userID, permission)
 		c.Next()
 	}
 }

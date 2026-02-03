@@ -80,6 +80,7 @@ func (s *SecureAuthService) SecureLogin(ctx context.Context, username, password 
 		if !authData.IsActive {
 			return "", "", nil, errors.New("account is inactive")
 		}
+git push github frontend
 
 		// Generate secure JWT tokens and context
 		accessToken, refreshToken, loginCtx, err := s.issueTokens(ctx, authData)

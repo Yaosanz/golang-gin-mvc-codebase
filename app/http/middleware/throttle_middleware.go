@@ -40,9 +40,7 @@ func (rl *RateLimiter) Limit() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Graceful degradation: if Redis is unavailable, allow the request
 		if rl.redis == nil {
-			log.Println("[WARN] Rate limiter: Redis client is nil, allowing request")
-			c.Next()
-			return
+		log.Println("[INFO] Rate limiter: Redis disabled - all requests allowed")
 		}
 
 		ctx := context.Background()
