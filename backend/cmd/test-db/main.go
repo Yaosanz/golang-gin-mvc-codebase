@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"net"
 	"os"
 	"strings"
 
@@ -50,7 +51,20 @@ func main() {
 	// Attempt connection
 	log.Println("🔄 Attempting connection to Supabase...")
 
-	conn, err := pgx.Connect(context.Background(), databaseURL)
+	// Configure custom DNS resolver if needed
+	ctx := context.Background()
+	
+	// Try to resolve hostname first
+	resolver := net.DefaultResolver
+	ips, dnsErr := resolver.LookupIP(ctx, "ip", dbHost)
+	if dnsErr != nil {
+		log.Printf("⚠️  Warning: DNS lookup failed for %s: %v\n", dbHost, dnsErr)
+		log.Println("   Retrying with system resolver...")
+	} else {
+		log.Printf("✓ DNS resolved: %s -> %v\n", dbHost, ips)
+	}
+
+	conn, err := pgx.Connect(ctx, databaseURL)
 	if err != nil {
 		log.Printf("❌ Connection failed: %v\n", err)
 		
