@@ -2,17 +2,16 @@
 FROM golang:1.25.0-alpine AS builder
 
 # Set the Current Working Directory inside the container
-ARG CONTEXT_DIR=.
 WORKDIR /app
 
 # copy go mod and sum files
-COPY ${CONTEXT_DIR}/go.mod ${CONTEXT_DIR}/go.sum ./
+COPY go.mod go.sum ./
 
 # download all dependencies. Dependencies will be cached if the go.mod and go.sum files are not changed
 RUN go mod download
 
 # copy the source from the current directory to the Working Directory inside the container
-COPY ${CONTEXT_DIR}/ .
+COPY . .
 
 # build the Go application
 # RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
