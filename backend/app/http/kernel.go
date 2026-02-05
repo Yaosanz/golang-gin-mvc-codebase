@@ -98,11 +98,6 @@ func (k *Kernel) registerRoutes() {
 		c.JSON(200, gin.H{"success": true, "message": "Redis OK", "redis": "connected"})
 	})
 
-	// Health check endpoint
-	k.router.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{"status": "ok"})
-	})
-
 	// register application http routes
 	routes.Register(k.router, k.app, k.middleware)
 }

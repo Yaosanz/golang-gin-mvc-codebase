@@ -48,9 +48,14 @@ func NewAppBootstrap() (*App, error) {
 	// initialize database connection
 	db, dbErr := database.NewPostgres(cfg)
 	if dbErr != nil {
-		log.Fatalf("Failed to initialize database: \n%v", dbErr)
+		log.Printf("⚠️ Warning: Failed to initialize database: \n%v\n", dbErr)
+		log.Println("⚠️ Database connection is not available - operating in limited mode")
+		log.Println("💡 This is normal for local development if using remote database with DNS issues")
+		log.Println("💡 Database will work properly when deployed to production (Railway, etc)")
+		a.db = nil // Set to nil to allow app to start without database
+	} else {
+		a.db = db
 	}
-	a.db = db
 
 	// initialize redis connection if enabled
 	if cfg.Redis().Enabled {

@@ -1,7 +1,6 @@
 package routes
 
 import (
-	"go-starter-app/app/http/controllers"
 	v1Controller "go-starter-app/app/http/controllers/v1"
 	"go-starter-app/app/http/middleware"
 	v1Route "go-starter-app/app/http/routes/v1"
@@ -34,10 +33,6 @@ func Register(
 		web.GET("/", func(c *gin.Context) {
 			c.JSON(200, gin.H{"message": "welcome to web"})
 		})
-
-		// Health check endpoint
-		healthController := controllers.NewHealthController(app)
-		web.GET("/health", healthController.GetHealth)
 
 		// Public redirect for short links - Multiple URL formats for flexibility
 		controller := v1Controller.NewShortenlinkController(app)
