@@ -16,6 +16,7 @@ COPY . .
 # build the Go application
 # RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main cmd/app/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o migration cmd/migration/main.go
 
 # start a new stage from scratch
 FROM alpine:3.14
@@ -24,8 +25,14 @@ FROM alpine:3.14
 RUN adduser -D appuser
 
 # copy application binary from builder stage and set ownership to non-root user
+WORKDIR /app
 COPY --from=builder --chown=appuser:appuser /app/main /app/main
+COPY --from=builder --chown=appuser:appuser /app/migration /app/migration
+COPY --from=builder --chown=appuser:appuser /app/database/migrations /app/database/migrations
+COPY --from=builder --chown=appuser:appuser /app/scripts/railway-start.sh /app/railway-start.sh
 #COPY --from=builder --chown=appuser:appuser /app/.env /app/.env
+
+RUN chmod +x /app/railway-start.sh
 
 # switch to non-root user
 USER appuser
@@ -33,5 +40,5 @@ USER appuser
 # exposed application port
 EXPOSE 8080
 
-# run the application binary
-CMD ["/app/main"]
+# run migrations (optional) and start the application
+CMD ["/app/railway-start.sh"]
