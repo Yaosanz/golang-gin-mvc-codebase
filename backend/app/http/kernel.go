@@ -82,6 +82,36 @@ func (k *Kernel) registerRoutes() {
 	// swagger docs route
 	k.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
+	// Application health check
+	k.router.GET("/health", func(c *gin.Context) {
+		health := map[string]interface{}{
+			"status": "healthy",
+			"timestamp": time.Now().Unix(),
+		}
+		
+		// Check database connection if available
+		appDeps := k.app.(interfaces.IAppDependencies)
+		db := appDeps.GetDB()
+		if db != nil {
+			ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
+			defer cancel()
+			if err := db.WithContext(ctx).Exec("SELECT 1").Error; err != nil {
+				health["status"] = "degraded"
+				health["database"] = map[string]interface{}{
+					"status": "error",
+					"error": err.Error(),
+				}
+				c.JSON(503, health)
+				return
+			}
+			health["database"] = map[string]interface{}{
+				"status": "ok",
+			}
+		}
+		
+		c.JSON(200, health)
+	})
+
 	// Redis health check (testing koneksi Redis / Docker Desktop)
 	k.router.GET("/health/redis", func(c *gin.Context) {
 		rdb := k.app.GetRedis()

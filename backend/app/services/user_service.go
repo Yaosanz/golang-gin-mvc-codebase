@@ -141,17 +141,22 @@ func (s *UserService) FindByEmail(ctx context.Context, email string) (*models.Us
 
 // Create adds a new user with transaction
 func (s *UserService) Create(ctx context.Context, dto *dto.CreateUserDTO) error {
+	db := s.app.GetDB()
+	if db == nil {
+		return fmt.Errorf("database connection is not available")
+	}
+	
 	var existingUser models.User
 
 	// Prevent duplicate username
-	if err := s.app.GetDB().Where("username = ?", dto.Username).First(&existingUser).Error; err == nil {
+	if err := db.Where("username = ?", dto.Username).First(&existingUser).Error; err == nil {
 		return ErrUsernameExists
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return fmt.Errorf("error checking username: %w", err)
 	}
 
 	// Prevent duplicate email
-	if err := s.app.GetDB().Where("email = ?", dto.Email).First(&existingUser).Error; err == nil {
+	if err := db.Where("email = ?", dto.Email).First(&existingUser).Error; err == nil {
 		return ErrEmailExists
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return fmt.Errorf("error checking email: %w", err)
